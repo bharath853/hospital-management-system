@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   ChevronDown, 
   Heart, 
@@ -14,6 +14,7 @@ import {
   FlaskConical,
   ArrowRight
 } from 'lucide-react';
+import LabLogin from './LabLogin';
 
 const ROLES_LIST = [
   {
@@ -70,11 +71,23 @@ const ROLES_LIST = [
 
 export default function Login({ onLoginSuccess }) {
   const navigate = useNavigate();
-  const [selectedRole, setSelectedRole] = useState('doctor');
+  const [selectedRole, setSelectedRole] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('role') || 'doctor';
+    } catch (e) {
+      return 'doctor';
+    }
+  });
   const [username, setUsername] = useState('madhavan@hospital.org');
   const [password, setPassword] = useState('doctor123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // If Laboratory is selected, render the dedicated LIMS Portal Login component
+  if (selectedRole === 'laboratory') {
+    return <LabLogin onLoginSuccess={onLoginSuccess} />;
+  }
 
   const handleRoleChange = (roleId) => {
     setSelectedRole(roleId);
@@ -85,6 +98,7 @@ export default function Login({ onLoginSuccess }) {
     }
     setError('');
   };
+
 
   const handleCompleteLogin = (userData) => {
     onLoginSuccess(userData);
@@ -145,6 +159,8 @@ export default function Login({ onLoginSuccess }) {
     if (unLower.includes('karthik')) derivedName = 'Dr. S. Karthikeyan';
     else if (unLower.includes('murugan')) derivedName = 'Dr. Murugan Jeyaraman';
     else if (unLower.includes('rajkanna') || unLower.includes('raj')) derivedName = 'Dr. Raj Kanna';
+    else if (unLower.includes('priya') || unLower.includes('nair')) derivedName = 'Dr. Priya Nair';
+    else if (unLower.includes('madhavan')) derivedName = 'Dr. Madhavan';
 
     handleCompleteLogin({
       token: 'user-entered-token-' + Date.now(),

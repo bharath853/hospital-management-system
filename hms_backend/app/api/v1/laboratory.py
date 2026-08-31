@@ -17,9 +17,31 @@ router = APIRouter(prefix="/laboratory", tags=["laboratory"])
 @router.get("/requests")
 def get_test_requests(db: Session = Depends(get_db)):
     defaults = [
-        {"id": 1, "Req ID": "LAB-401", "Patient": "Aarav Kumar", "Test Type": "CBC Blood Profile", "Priority": "Normal", "Requested By": "Dr. Priya Nair"}
+        {"id": 1, "Req ID": "LAB-401", "Patient": "Aarav Kumar", "Test Type": "CBC Blood Profile & Lipid", "Priority": "Normal", "Requested By": "Dr. Madhavan", "Status": "Requested"},
+        {"id": 2, "Req ID": "LAB-402", "Patient": "Rajesh Patel", "Test Type": "EEG & Brain MRI Scan", "Priority": "High", "Requested By": "Dr. S. Karthikeyan", "Status": "Requested"},
+        {"id": 3, "Req ID": "LAB-403", "Patient": "Master Vihaan Singh", "Test Type": "Pediatric Sputum Culture", "Priority": "Normal", "Requested By": "Dr. Murugan Jeyaraman", "Status": "Requested"},
+        {"id": 4, "Req ID": "LAB-404", "Patient": "Vikramaditya Rao", "Test Type": "Synovial Fluid Analysis", "Priority": "High", "Requested By": "Dr. Raj Kanna", "Status": "Requested"}
     ]
-    return get_generic_records(db, "lab_requests", defaults)
+    records = get_generic_records(db, "lab_requests", defaults)
+    doc_lab_requests = get_generic_records(db, "doctor_lab_requests", [])
+    for dlr in doc_lab_requests:
+        req_id = f"LAB-{500 + dlr.get('id', 1)}"
+        pat = dlr.get("Patient") or dlr.get("Patient Name") or "Patient"
+        test_name = dlr.get("Test Name") or dlr.get("Test Type") or "Prescribed Test"
+        doc = dlr.get("Doctor") or "Doctor"
+        prio = dlr.get("Priority") or "Normal"
+        st = dlr.get("Status") or "Requested"
+        if not any(r.get("Req ID") == req_id or (r.get("Patient") == pat and r.get("Test Type") == test_name) for r in records):
+            records.append({
+                "id": 1000 + dlr.get("id", 1),
+                "Req ID": req_id,
+                "Patient": pat,
+                "Test Type": test_name,
+                "Priority": prio,
+                "Requested By": doc,
+                "Status": st
+            })
+    return records
 
 @router.post("/test-request")
 def create_test_request(payload: dict, db: Session = Depends(get_db)):

@@ -412,6 +412,81 @@ def get_payment_gateway_logs(db: Session = Depends(get_db)):
 
 @router.get("/invoices")
 def get_invoices(db: Session = Depends(get_db)):
-    defaults = [{"id": 1, "Invoice ID": "INV-2026-01", "Patient": "Aarav Kumar", "Total Amount": "₹1,150.00", "Due Date": "2026-08-25", "Status": "Paid"}]
+    defaults = [
+        {
+            "id": 1, 
+            "Invoice ID": "INV-2026-01", 
+            "Name": "Aarav Kumar",
+            "Patient": "Aarav Kumar", 
+            "Consultation Charge": "₹500.00", 
+            "Lab Charge": "₹350.00", 
+            "Pharmacy Charge": "₹245.00", 
+            "Total": "₹1,095.00", 
+            "Total Amount": "₹1,095.00",
+            "Status": "Paid",
+            "Payment Mode": "UPI / Online Desk",
+            "Date": "2026-08-20 11:30 AM"
+        },
+        {
+            "id": 2, 
+            "Invoice ID": "INV-2026-02", 
+            "Name": "Rajesh Patel",
+            "Patient": "Rajesh Patel", 
+            "Consultation Charge": "₹600.00", 
+            "Lab Charge": "₹850.00", 
+            "Pharmacy Charge": "₹350.00", 
+            "Total": "₹1,800.00", 
+            "Total Amount": "₹1,800.00",
+            "Status": "Paid",
+            "Payment Mode": "Credit Card",
+            "Date": "2026-08-20 12:45 PM"
+        },
+        {
+            "id": 3, 
+            "Invoice ID": "INV-2026-03", 
+            "Name": "Siddharth Roy",
+            "Patient": "Siddharth Roy", 
+            "Consultation Charge": "₹750.00", 
+            "Lab Charge": "₹1,200.00", 
+            "Pharmacy Charge": "₹650.00", 
+            "Total": "₹2,600.00", 
+            "Total Amount": "₹2,600.00",
+            "Status": "Pending",
+            "Payment Mode": "Cash Desk",
+            "Date": "2026-08-20 02:15 PM"
+        }
+    ]
     return get_generic_records(db, "billing_invoices", defaults)
 
+@router.post("/invoices")
+def create_invoice(payload: dict, db: Session = Depends(get_db)):
+    # Normalize patient name / name
+    if not payload.get("Name") and payload.get("Patient"):
+        payload["Name"] = payload.get("Patient")
+    elif not payload.get("Patient") and payload.get("Name"):
+        payload["Patient"] = payload.get("Name")
+
+    # Calculate Total automatically if individual charges given
+    if not payload.get("Total") or payload.get("Total") == "Sample Total":
+        total = 0.0
+        for key in ["Consultation Charge", "Consultation Fee", "Lab Charge", "Lab Charges", "Pharmacy Charge", "Pharmacy Charges"]:
+            val_str = str(payload.get(key, "0")).replace("₹", "").replace("$", "").replace(",", "").strip()
+            try:
+                total += float(val_str)
+            except ValueError:
+                pass
+        if total > 0:
+            payload["Total"] = f"₹{total:.2f}"
+            payload["Total Amount"] = f"₹{total:.2f}"
+        else:
+            payload["Total"] = "₹1,095.00"
+            payload["Total Amount"] = "₹1,095.00"
+
+    if not payload.get("Payment Mode"):
+        payload["Payment Mode"] = "Online Payment Desk"
+
+    return create_generic_record(db, "billing_invoices", payload)
+
+@router.delete("/invoices/{record_id}")
+def delete_invoice(record_id: int, db: Session = Depends(get_db)):
+    return delete_generic_record(db, "billing_invoices", record_id)

@@ -3,4 +3,5 @@ uvicorn[standard]
 sqlalchemy
 python-dotenv
 pydantic
+pyjwt>=2.8.0
 

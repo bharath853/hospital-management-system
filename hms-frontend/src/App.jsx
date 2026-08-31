@@ -7,12 +7,17 @@ import html2canvas from 'html2canvas';
 import Layout from './components/Layout/Layout';
 import AdminDashboard from './pages/Admin/Dashboard';
 import Login from './pages/Auth/Login';
+import LabLogin from './pages/Auth/LabLogin';
+import LabSectionsPage from './pages/Laboratory/LabSectionsPage';
+import LabSectionBar from './components/Laboratory/LabSectionBar';
+import LabPageLayout from './components/Laboratory/LabPageLayout';
 
 const DOCTOR_OPTIONS = [
   'Dr. Madhavan',
   'Dr. S. Karthikeyan',
   'Dr. Murugan Jeyaraman',
-  'Dr. Raj Kanna'
+  'Dr. Raj Kanna',
+  'Dr. Priya Nair'
 ];
 
 const MEDICINE_OPTIONS = [
@@ -603,7 +608,7 @@ const DateTimePicker = ({ value, onChange, placeholder = "Select Date & Time" })
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="mt-3 w-full py-1.5 bg-blue-600 text-white font-semibold text-xs rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+            className="mt-3 w-full py-1.5 bg-blue-600 text-white font-semibold text-xs rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
             >
               Done
             </button>
@@ -616,7 +621,7 @@ const DateTimePicker = ({ value, onChange, placeholder = "Select Date & Time" })
 
 
 // Generic Interactive Page Component
-const GenericPage = ({ title, description, cols, defaultData = [], apiEndpoint, isLabReport = false, isBilling = false }) => {
+const GenericPage = ({ title, description, cols, defaultData = [], apiEndpoint, isLabReport = false, isBilling = false, allowAdd = true }) => {
   const [data, setData] = useState(defaultData);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -654,15 +659,35 @@ const GenericPage = ({ title, description, cols, defaultData = [], apiEndpoint, 
     );
   };
 
-  // Get doctor name filter from stored session
-  const doctorNameFilter = useMemo(() => {
+  // Get logged-in doctor name from stored session (if logged in as Doctor)
+  const loggedDoctorName = useMemo(() => {
     try {
       const saved = localStorage.getItem('hms_user');
       if (!saved) return null;
       const obj = JSON.parse(saved);
-      return obj?.role === 'doctor' ? (obj?.full_name || obj?.name || null) : null;
+      const r = String(obj?.role || '').toLowerCase();
+      if (r === 'doctor' || r.includes('doctor')) {
+        return obj?.full_name || obj?.name || 'Dr. Madhavan';
+      }
+      return null;
     } catch (e) { return null; }
   }, []);
+
+  // Get logged-in nurse name from stored session (if logged in as Nurse)
+  const loggedNurseName = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('hms_user');
+      if (!saved) return null;
+      const obj = JSON.parse(saved);
+      const r = String(obj?.role || '').toLowerCase();
+      if (r === 'nurse' || r.includes('nurse')) {
+        return obj?.full_name || obj?.name || 'Selvi. V. Mary';
+      }
+      return null;
+    } catch (e) { return null; }
+  }, []);
+
+  const doctorNameFilter = loggedDoctorName;
 
   const pageSize = 5;
 
@@ -705,7 +730,7 @@ const GenericPage = ({ title, description, cols, defaultData = [], apiEndpoint, 
     return data.filter((row) => {
       // Doctor Isolation Guard: If logged in as Doctor, only show records matching this doctor
       if (doctorNameFilter) {
-        const rowDoctor = String(row.Doctor || row['Doctor Name'] || row['Attending Doctor'] || '').toLowerCase();
+        const rowDoctor = String(row.Doctor || row['Doctor Name'] || row['Attending Doctor'] || row.doctor || '').toLowerCase();
         const loggedDoc = doctorNameFilter.toLowerCase();
         if (rowDoctor) {
           const docKeys = ["madhavan", "karthik", "murugan", "raj", "priya"];
@@ -758,8 +783,20 @@ const GenericPage = ({ title, description, cols, defaultData = [], apiEndpoint, 
         else initialForm[col] = `ID-${rand}`;
       } else if (isDateTimeField(col)) {
         initialForm[col] = localIsoDateTime;
-      } else if (colLower.includes('doctor')) {
-        initialForm[col] = DOCTOR_OPTIONS[0];
+      } else if (colLower.includes('doctor') || (loggedDoctorName && (colLower.includes('attending') || colLower.includes('prescribed by')))) {
+        initialForm[col] = loggedDoctorName || DOCTOR_OPTIONS[0];
+      } else if (loggedNurseName && (colLower.includes('recorded by') || colLower.includes('nurse in-charge') || colLower.includes('administered by') || colLower.includes('added by') || colLower.includes('nurse'))) {
+        initialForm[col] = loggedNurseName;
+      } else if (colLower.includes('consultation fee') || colLower.includes('consultation')) {
+        initialForm[col] = '$50.00';
+      } else if (colLower.includes('lab charges') || colLower.includes('lab')) {
+        initialForm[col] = '$35.00';
+      } else if (colLower.includes('pharmacy charges') || colLower.includes('pharmacy')) {
+        initialForm[col] = '$24.50';
+      } else if (colLower.includes('room charges') || colLower.includes('room')) {
+        initialForm[col] = '$0.00';
+      } else if (colLower.includes('total amount')) {
+        initialForm[col] = '$109.50';
       } else if (colLower.includes('medicine') || colLower.includes('tablet')) {
         initialForm[col] = MEDICINE_OPTIONS[0];
       } else if (colLower.includes('status') || colLower.includes('availability')) {
@@ -814,8 +851,34 @@ const GenericPage = ({ title, description, cols, defaultData = [], apiEndpoint, 
     }
 
     const newEntry = { ...formData };
-    if (doctorNameFilter && !newEntry.Doctor && cols.some(c => c.toLowerCase().includes('doctor'))) {
-      newEntry.Doctor = doctorNameFilter;
+    if (loggedDoctorName) {
+      cols.forEach((col) => {
+        const colLower = col.toLowerCase();
+        if (colLower.includes('doctor') || colLower.includes('attending') || colLower.includes('prescribed by')) {
+          newEntry[col] = loggedDoctorName;
+        }
+      });
+    }
+
+    if (loggedNurseName) {
+      cols.forEach((col) => {
+        const colLower = col.toLowerCase();
+        if (colLower.includes('recorded by') || colLower.includes('nurse in-charge') || colLower.includes('administered by') || colLower.includes('added by') || colLower.includes('nurse')) {
+          newEntry[col] = loggedNurseName;
+        }
+      });
+    }
+
+    // Auto calculate Total Amount if charge columns exist and Total Amount not specified
+    if (cols.some(c => c.toLowerCase().includes('total amount')) && !newEntry['Total Amount']) {
+      let sum = 0;
+      ['Consultation Fee', 'Lab Charges', 'Pharmacy Charges', 'Room Charges'].forEach(k => {
+        if (newEntry[k]) {
+          const num = parseFloat(String(newEntry[k]).replace('$', '').replace(',', '').trim()) || 0;
+          sum += num;
+        }
+      });
+      newEntry['Total Amount'] = sum > 0 ? `$${sum.toFixed(2)}` : '$109.50';
     }
 
     cols.forEach((col) => {
@@ -830,7 +893,12 @@ const GenericPage = ({ title, description, cols, defaultData = [], apiEndpoint, 
 
 
     if (apiEndpoint) {
-      fetch(apiEndpoint, {
+      let postUrl = apiEndpoint;
+      if (loggedDoctorName) {
+        const separator = postUrl.includes('?') ? '&' : '?';
+        postUrl = `${postUrl}${separator}doctor_name=${encodeURIComponent(loggedDoctorName)}`;
+      }
+      fetch(postUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newEntry),
@@ -881,12 +949,8 @@ SUMMARY OF DIAGNOSTIC FINDINGS:
 -----------------------------------------------------
 - All blood count parameters within normal ranges.
 - Hemoglobin: 14.2 g/dL (Normal)
-- White Blood Cells: 6,500 /uL (Normal)
-- Platelet Count: 250,000 /uL (Normal)
-- Verified by: Anil Mehta (Senior Pathologist)
-
------------------------------------------------------
-Confidential Medical Report. Hospital Seal Applied.
+- Platelet Count: 260,000 /mcL (Normal)
+- Verified By: Anil Mehta (Senior Diagnostic Technologist)
 =====================================================
 `;
 
@@ -902,13 +966,15 @@ Confidential Medical Report. Hospital Seal Applied.
   };
 
   const handleDownloadInvoicePDF = async (row) => {
-    const patientName = row.Patient || row['Patient Name'] || 'Aarav Kumar';
+    const name = row.Name || row.Patient || row['Patient Name'] || 'Aarav Kumar';
     const invoiceId = row['Invoice ID'] || row['Bill ID'] || row['Transaction ID'] || `INV-2026-${row.id || '01'}`;
-    const amount = row['Total Amount'] || row.Amount || '$109.50';
-    const dateStr = row.Date || row['Due Date'] || row['Upload Date'] || '2026-08-13';
+    const consultCharge = row['Consultation Charge'] || row['Consultation Fee'] || row.Consultation || '$50.00';
+    const labCharge = row['Lab Charge'] || row['Lab Charges'] || row.Lab || '$35.00';
+    const pharmacyCharge = row['Pharmacy Charge'] || row['Pharmacy Charges'] || row.Pharmacy || '$24.50';
+    const total = row.Total || row['Total Amount'] || row.Amount || '$109.50';
     const status = row.Status || row['Payment Status'] || 'Paid';
-    const doctor = row.Doctor || 'Dr. Priya Nair';
-    const method = row.Method || 'Online Payment Desk';
+    const paymentMode = row['Payment Mode'] || row.Method || row['Payment Method'] || 'Online Payment Desk';
+    const dateStr = row.Date || row['Due Date'] || '2026-08-20 11:30 AM';
 
     const element = document.getElementById('printable-invoice-receipt');
     if (element) {
@@ -925,7 +991,7 @@ Confidential Medical Report. Hospital Seal Applied.
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
         pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-        pdf.save(`Invoice_${invoiceId.replace(/[^a-z0-9]/gi, '_')}_${patientName.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+        pdf.save(`Invoice_${invoiceId.replace(/[^a-z0-9]/gi, '_')}_${name.replace(/[^a-z0-9]/gi, '_')}.pdf`);
         return;
       } catch (err) {
         console.error('Canvas capture failed, generating vector PDF', err);
@@ -943,8 +1009,7 @@ Confidential Medical Report. Hospital Seal Applied.
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
-    doc.text('Multi-Specialty Healthcare & Medical Research Center', 14, 26);
-    doc.text('100 Healthcare Blvd, Sector 4 • Phone: +91 98765 00000', 14, 31);
+    doc.text('Multi-Specialty Healthcare & Medical Research Center • Phone: +91 98765 00000', 14, 26);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
@@ -953,106 +1018,114 @@ Confidential Medical Report. Hospital Seal Applied.
 
     doc.setFontSize(12);
     doc.setTextColor(15, 23, 42);
-    doc.text(invoiceId, 196, 27, { align: 'right' });
+    doc.text(invoiceId, 196, 26, { align: 'right' });
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Date: ${dateStr}`, 196, 32, { align: 'right' });
-
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.75);
-    doc.line(14, 37, 196, 37);
-
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(14, 42, 182, 26, 3, 3, 'F');
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(14, 42, 182, 26, 3, 3, 'D');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text('BILLED TO PATIENT', 18, 48);
-    doc.text('PAYMENT SUMMARY', 192, 48, { align: 'right' });
-
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text(patientName, 18, 54);
-
-    doc.setFontSize(10);
-    doc.setTextColor(5, 150, 105);
-    doc.text(`Status: ${status}`, 192, 54, { align: 'right' });
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Attending Doctor: ${doctor}`, 18, 60);
-    doc.text(`Method: ${method}`, 192, 60, { align: 'right' });
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text('DESCRIPTION', 14, 76);
-    doc.text('QTY / DAYS', 120, 76, { align: 'center' });
-    doc.text('AMOUNT', 196, 76, { align: 'right' });
-
-    doc.setDrawColor(203, 213, 225);
-    doc.setLineWidth(0.5);
-    doc.line(14, 79, 196, 79);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text('Hospital Consultation & Clinical Care Services', 14, 87);
-    doc.setFont('helvetica', 'normal');
-    doc.text('1', 120, 87, { align: 'center' });
-    doc.text(amount, 196, 87, { align: 'right' });
-
-    doc.setFontSize(9);
-    doc.setTextColor(71, 85, 105);
-    doc.text('Diagnostic Laboratory Profile & Pharmacy Dispense', 14, 95);
-    doc.text('1', 120, 95, { align: 'center' });
-    doc.text('Included', 196, 95, { align: 'right' });
-
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.75);
-    doc.line(14, 105, 196, 105);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(71, 85, 105);
-    doc.text('Computer Generated Official Receipt', 14, 112);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(100, 116, 139);
-    doc.text('Thank you for choosing City Care General Hospital.', 14, 117);
+    doc.text(`Date: ${dateStr}`, 196, 31, { align: 'right' });
+
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.75);
+    doc.line(14, 36, 196, 36);
+
+    // Box Container
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, 42, 182, 114, 3, 3, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(14, 42, 182, 114, 3, 3, 'D');
+
+    // Name
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text('name', 22, 54);
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text(name, 186, 54, { align: 'right' });
+
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(22, 60, 186, 60);
+
+    // Consultation Charge
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(51, 65, 85);
+    doc.text('consulation charge', 22, 70);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(consultCharge, 186, 70, { align: 'right' });
+
+    // Lab Charge
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('lab charge', 22, 82);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(labCharge, 186, 82, { align: 'right' });
+
+    // Pharmacy Charge
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('pharmacy charge', 22, 94);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(pharmacyCharge, 186, 94, { align: 'right' });
+
+    // Total :
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.75);
+    doc.line(22, 102, 186, 102);
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text('GRAND TOTAL', 150, 114, { align: 'right' });
-
-    doc.setFontSize(16);
+    doc.setFontSize(13);
     doc.setTextColor(15, 23, 42);
-    doc.text(amount, 196, 115, { align: 'right' });
+    doc.text('total :', 22, 114);
+    doc.setFontSize(16);
+    doc.setTextColor(29, 78, 216);
+    doc.text(total, 186, 114, { align: 'right' });
 
+    // Status : & Payment Mode :
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(22, 122, 186, 122);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text('status :', 22, 132);
+    doc.setTextColor(5, 150, 105);
+    doc.setFontSize(11);
+    doc.text(status, 186, 132, { align: 'right' });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text('payment mode :', 22, 144);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(11);
+    doc.text(paymentMode, 186, 144, { align: 'right' });
+
+    // Footer
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
-    doc.text('Issued by Finance Department | City Care General Hospital | Phone: +91 98765 00000', 14, 135);
-    doc.text('Valid without signature • Hospital Seal Applied', 196, 135, { align: 'right' });
+    doc.text('Computer Generated Official Receipt • City Care General Hospital • Valid without signature', 14, 168);
 
-    doc.save(`Invoice_${invoiceId.replace(/[^a-z0-9]/gi, '_')}_${patientName.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+    doc.save(`Invoice_${invoiceId.replace(/[^a-z0-9]/gi, '_')}_${name.replace(/[^a-z0-9]/gi, '_')}.pdf`);
   };
 
   const handlePrintInvoice = (row) => {
-    const patientName = row.Patient || row['Patient Name'] || 'Aarav Kumar';
+    const name = row.Name || row.Patient || row['Patient Name'] || 'Aarav Kumar';
     const invoiceId = row['Invoice ID'] || row['Bill ID'] || row['Transaction ID'] || `INV-2026-${row.id || '01'}`;
-    const amount = row['Total Amount'] || row.Amount || '$109.50';
-    const dateStr = row.Date || row['Due Date'] || '2026-08-13';
+    const consultCharge = row['Consultation Charge'] || row['Consultation Fee'] || row.Consultation || '$50.00';
+    const labCharge = row['Lab Charge'] || row['Lab Charges'] || row.Lab || '$35.00';
+    const pharmacyCharge = row['Pharmacy Charge'] || row['Pharmacy Charges'] || row.Pharmacy || '$24.50';
+    const total = row.Total || row['Total Amount'] || row.Amount || '$109.50';
     const status = row.Status || row['Payment Status'] || 'Paid';
-    const doctor = row.Doctor || 'Dr. Priya Nair';
-    const method = row.Method || 'Online Payment Desk';
+    const paymentMode = row['Payment Mode'] || row.Method || row['Payment Method'] || 'Online Payment Desk';
+    const dateStr = row.Date || row['Due Date'] || '2026-08-20 11:30 AM';
 
     const printWin = window.open('', '_blank', 'width=850,height=950');
     if (!printWin) {
@@ -1065,31 +1138,94 @@ Confidential Medical Report. Hospital Seal Applied.
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Invoice - ${invoiceId}</title>
+          <title>Invoice - ${name}</title>
           <style>
             @page {
               size: A4 portrait;
               margin: 15mm;
             }
             * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-            body { margin: 0; padding: 25px; color: #0f172a; background: #ffffff; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #0f172a; padding-bottom: 18px; margin-bottom: 22px; }
-            .title { font-size: 24px; font-weight: 900; color: #0f172a; letter-spacing: 0.5px; margin: 0; }
+            body { margin: 0; padding: 30px; color: #0f172a; background: #ffffff; font-size: 14px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
+            .title { font-size: 24px; font-weight: 900; color: #0f172a; margin: 0; }
             .subtitle { font-size: 11px; color: #64748b; margin-top: 4px; }
-            .badge { display: inline-block; background: #ccfbf1; color: #115e59; font-weight: 800; padding: 5px 12px; border-radius: 9999px; font-size: 10px; text-transform: uppercase; border: 1px solid #99f6e4; margin-bottom: 8px; }
-            .meta-grid { display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; padding: 18px; border-radius: 14px; margin-bottom: 24px; }
-            .meta-col { width: 48%; }
-            .meta-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
-            .meta-val { font-size: 14px; font-weight: 800; color: #0f172a; margin-top: 4px; }
-            .meta-sub { font-size: 11px; color: #475569; margin-top: 2px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
-            th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #cbd5e1; color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 800; }
-            td { padding: 14px 8px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
-            .text-right { text-align: right; }
-            .text-center { text-align: center; }
-            .total-section { border-top: 2.5px solid #0f172a; padding-top: 18px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .grand-total { font-size: 24px; font-weight: 900; color: #0f172a; }
-            .footer-note { font-size: 10px; color: #94a3b8; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 15px; display: flex; justify-content: space-between; }
+            .badge { display: inline-block; background: #ccfbf1; color: #115e59; font-weight: 800; padding: 4px 10px; border-radius: 9999px; font-size: 10px; text-transform: uppercase; border: 1px solid #99f6e4; margin-bottom: 6px; }
+            
+            .invoice-card {
+              background: #f8fafc;
+              border: 1.5px solid #e2e8f0;
+              border-radius: 16px;
+              padding: 28px;
+              max-width: 600px;
+              margin: 0 auto;
+            }
+            .item-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 12px 0;
+              border-bottom: 1px solid #e2e8f0;
+            }
+            .item-row:last-child {
+              border-bottom: none;
+            }
+            .name-label {
+              font-size: 13px;
+              font-weight: 700;
+              color: #64748b;
+              text-transform: capitalize;
+            }
+            .name-value {
+              font-size: 17px;
+              font-weight: 900;
+              color: #0f172a;
+            }
+            .charge-label {
+              font-size: 14px;
+              font-weight: 600;
+              color: #334155;
+            }
+            .charge-val {
+              font-size: 15px;
+              font-weight: 800;
+              color: #0f172a;
+            }
+            .total-section {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 16px 0 12px 0;
+              border-top: 2.5px solid #0f172a;
+              border-bottom: 1px solid #e2e8f0;
+              margin-top: 10px;
+            }
+            .total-label {
+              font-size: 16px;
+              font-weight: 900;
+              color: #0f172a;
+              text-transform: capitalize;
+            }
+            .total-val {
+              font-size: 22px;
+              font-weight: 900;
+              color: #1d4ed8;
+            }
+            .meta-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 10px 0;
+              font-size: 13px;
+            }
+            .footer-note {
+              font-size: 10px;
+              color: #94a3b8;
+              margin-top: 36px;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 14px;
+              display: flex;
+              justify-content: space-between;
+            }
           </style>
         </head>
         <body>
@@ -1099,64 +1235,60 @@ Confidential Medical Report. Hospital Seal Applied.
               <p class="subtitle">Multi-Specialty Healthcare & Medical Research Center</p>
               <p class="subtitle">100 Healthcare Blvd, Sector 4 • Phone: +91 98765 00000</p>
             </div>
-            <div class="text-right">
+            <div style="text-align: right;">
               <span class="badge">Official Tax Invoice</span>
-              <p style="font-size: 15px; font-weight: 800; margin: 4px 0 2px 0;">${invoiceId}</p>
-              <p style="font-size: 11px; color: #64748b; margin: 0;">Date: ${dateStr}</p>
+              <p style="font-size: 13px; font-weight: 800; margin: 4px 0 0 0;">${invoiceId}</p>
+              <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Date: ${dateStr}</p>
             </div>
           </div>
 
-          <div class="meta-grid">
-            <div class="meta-col">
-              <div class="meta-label">Billed To Patient</div>
-              <div class="meta-val">${patientName}</div>
-              <div class="meta-sub">Attending Doctor: ${doctor}</div>
+          <div class="invoice-card">
+            <div class="item-row" style="border-bottom: 2px solid #cbd5e1; padding-bottom: 14px;">
+              <span class="name-label" style="font-weight: 800; color: #475569;">name</span>
+              <span class="name-value">${name}</span>
             </div>
-            <div class="meta-col text-right">
-              <div class="meta-label">Payment Summary</div>
-              <div class="meta-val" style="color: #059669;">Status: ${status}</div>
-              <div class="meta-sub">Method: ${method}</div>
-            </div>
-          </div>
 
-          <table>
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th class="text-center">Qty / Days</th>
-                <th class="text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="font-weight: 700; color: #0f172a;">Hospital Consultation & Clinical Care Services</td>
-                <td class="text-center">1</td>
-                <td class="text-right">${amount}</td>
-              </tr>
-              <tr>
-                <td>Diagnostic Laboratory Profile & Pharmacy Dispense</td>
-                <td class="text-center">1</td>
-                <td class="text-right">Included</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="total-section">
-            <div>
-              <p style="font-weight: 700; margin: 0 0 2px 0; font-size: 11px;">Computer Generated Official Invoice</p>
-              <p style="color: #64748b; margin: 0; font-size: 10px;">Thank you for choosing City Care General Hospital.</p>
+            <div class="item-row">
+              <span class="charge-label">consulation charge</span>
+              <span class="charge-val">${consultCharge}</span>
             </div>
-            <div class="text-right">
-              <span style="font-size: 10px; text-transform: uppercase; font-weight: 800; color: #64748b; margin-right: 10px;">Grand Total</span>
-              <span class="grand-total">${amount}</span>
+
+            <div class="item-row">
+              <span class="charge-label">lab charge</span>
+              <span class="charge-val">${labCharge}</span>
+            </div>
+
+            <div class="item-row">
+              <span class="charge-label">pharmacy charge</span>
+              <span class="charge-val">${pharmacyCharge}</span>
+            </div>
+
+            <div class="total-section">
+              <span class="total-label">total :</span>
+              <span class="total-val">${total}</span>
+            </div>
+
+            <div class="meta-row">
+              <span class="name-label">status :</span>
+              <span style="font-weight: 800; color: #059669;">${status}</span>
+            </div>
+
+            <div class="meta-row">
+              <span class="name-label">payment mode :</span>
+              <span style="font-weight: 700; color: #0f172a;">${paymentMode}</span>
             </div>
           </div>
 
           <div class="footer-note">
-            <span>Issued by Finance Dept | City Care General Hospital</span>
-            <span>Valid without signature • Hospital Seal Applied</span>
-        <body onload="window.print(); window.close();">
-          ${element.innerHTML}
+            <span>Computer Generated Official Receipt • City Care General Hospital</span>
+            <span>Valid without signature • Official Seal Applied</span>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
         </body>
       </html>
     `);
@@ -1166,65 +1298,104 @@ Confidential Medical Report. Hospital Seal Applied.
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       {isModalOpen && createPortal(
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-xl z-[99999] flex flex-col w-screen h-screen overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex justify-between items-center px-6 py-4 md:px-10 md:py-5 border-b border-slate-200 bg-white shrink-0 shadow-sm">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-blue-100 rounded-2xl text-blue-700">
-                <Plus className="w-6 h-6" />
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[99999] flex flex-col w-screen h-screen overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-white">
+          <div className="flex justify-between items-center px-6 py-4 md:px-10 md:py-5 border-b border-emerald-500/20 bg-[#021f19] shrink-0 shadow-md">
+            <div className="flex items-center space-x-3.5">
+              <div className="p-3 bg-gradient-to-tr from-emerald-600 to-teal-400 rounded-2xl text-slate-950 shadow-lg shadow-emerald-600/30">
+                <Plus className="w-6 h-6 text-slate-950" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Add New Entry — {title}</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Fill out complete record details below</p>
+                <h2 className="text-xl font-black text-white tracking-tight">Add New Entry — {title}</h2>
+                <p className="text-xs text-emerald-300/80 mt-0.5">Fill out complete record details below</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="flex items-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded-xl text-xs font-bold transition-all border border-slate-200">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="flex items-center space-x-2 px-4 py-2 bg-emerald-950/70 hover:bg-rose-950/80 text-emerald-200 hover:text-rose-300 rounded-xl text-xs font-bold transition-all border border-emerald-500/30">
                 <X className="w-4 h-4" />
                 <span>Close</span>
               </button>
             </div>
           </div>
           
-          <form onSubmit={handleCreateNew} className="flex flex-col flex-1 overflow-hidden bg-slate-50">
+          <form onSubmit={handleCreateNew} className="flex flex-col flex-1 overflow-hidden bg-[#011712]">
             <div className="p-6 md:p-12 overflow-y-auto flex-1 scrollbar-thin">
               <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {cols.map((col, idx) => {
                   const colLower = col.toLowerCase();
-                  const isDoctor = colLower.includes('doctor');
+                  const isDoctor = colLower.includes('doctor') || (loggedDoctorName && (colLower.includes('attending') || colLower.includes('prescribed by')));
+                  const isNurseField = loggedNurseName && (colLower.includes('recorded by') || colLower.includes('nurse in-charge') || colLower.includes('administered by') || colLower.includes('added by') || colLower.includes('nurse'));
                   const isMedicine = colLower.includes('medicine') || colLower.includes('tablet');
                   const isStatus = colLower.includes('status') || colLower.includes('availability');
                   const isPain = colLower.includes('pain');
                   const isDateTime = isDateTimeField(col);
                   return (
                     <div key={idx} className={isPain ? "col-span-full" : "col-span-1"}>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">{col}</label>
+                      <label className="block text-xs font-bold text-emerald-300/90 uppercase tracking-wider mb-2">{col}</label>
                       {isPain ? (
                         <WongBakerPainScaleSelector value={formData[col] || '3/10'} onChange={(val) => handleInputChange(col, val)} />
                       ) : isDoctor ? (
-                        <select value={formData[col] || doctorNameFilter || DOCTOR_OPTIONS[0]} onChange={(e) => handleInputChange(col, e.target.value)} className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm bg-white font-medium text-slate-800 shadow-sm">
-                          {DOCTOR_OPTIONS.map((doc, dIdx) => <option key={dIdx} value={doc}>{doc}</option>)}
-                        </select>
+                        loggedDoctorName ? (
+                          <div className="relative">
+                            <select
+                              value={loggedDoctorName}
+                              disabled
+                              className="w-full px-4 py-3 border border-emerald-500/40 bg-emerald-950/80 rounded-xl font-bold text-emerald-200 shadow-sm cursor-not-allowed appearance-none pr-12"
+                            >
+                              <option value={loggedDoctorName}>{loggedDoctorName}</option>
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">
+                                You
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <select
+                            value={formData[col] || DOCTOR_OPTIONS[0]}
+                            onChange={(e) => handleInputChange(col, e.target.value)}
+                            className="w-full px-4 py-3 border border-emerald-500/30 rounded-xl focus:ring-2 focus:ring-emerald-400 text-sm bg-[#021f19] font-medium text-white shadow-sm"
+                          >
+                            {DOCTOR_OPTIONS.map((doc, dIdx) => (
+                              <option key={dIdx} value={doc}>{doc}</option>
+                            ))}
+                          </select>
+                        )
+                      ) : isNurseField ? (
+                        <div className="relative">
+                          <select
+                            value={loggedNurseName}
+                            disabled
+                            className="w-full px-4 py-3 border border-teal-500/40 bg-teal-950/80 rounded-xl font-bold text-teal-200 shadow-sm cursor-not-allowed appearance-none pr-12"
+                          >
+                            <option value={loggedNurseName}>{loggedNurseName}</option>
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <span className="text-[10px] bg-teal-600 text-white font-extrabold px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">
+                              Nurse (You)
+                            </span>
+                          </div>
+                        </div>
                       ) : isMedicine ? (
-                        <select value={formData[col] || MEDICINE_OPTIONS[0]} onChange={(e) => handleInputChange(col, e.target.value)} className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm bg-white font-medium text-slate-800 shadow-sm">
+                        <select value={formData[col] || MEDICINE_OPTIONS[0]} onChange={(e) => handleInputChange(col, e.target.value)} className="w-full px-4 py-3 border border-emerald-500/30 rounded-xl focus:ring-2 focus:ring-emerald-400 text-sm bg-[#021f19] font-medium text-white shadow-sm">
                           {MEDICINE_OPTIONS.map((med, mIdx) => <option key={mIdx} value={med}>{med}</option>)}
                         </select>
                       ) : isStatus ? (
-                        <select value={formData[col] || STATUS_OPTIONS[0]} onChange={(e) => handleInputChange(col, e.target.value)} className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm bg-white font-medium text-slate-800 shadow-sm">
+                        <select value={formData[col] || STATUS_OPTIONS[0]} onChange={(e) => handleInputChange(col, e.target.value)} className="w-full px-4 py-3 border border-emerald-500/30 rounded-xl focus:ring-2 focus:ring-emerald-400 text-sm bg-[#021f19] font-medium text-white shadow-sm">
                           {STATUS_OPTIONS.map((st, sIdx) => <option key={sIdx} value={st}>{st}</option>)}
                         </select>
                       ) : isDateTime ? (
                         <DateTimePicker value={formData[col] || ''} onChange={(val) => handleInputChange(col, val)} />
                       ) : (
-                        <input type="text" required={idx === 0} value={formData[col] || ''} onChange={(e) => handleInputChange(col, e.target.value)} className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-medium text-slate-800 shadow-sm bg-white" />
+                        <input type="text" required={idx === 0} value={formData[col] || ''} onChange={(e) => handleInputChange(col, e.target.value)} className="w-full px-4 py-3 border border-emerald-500/30 rounded-xl focus:ring-2 focus:ring-emerald-400 text-sm font-medium text-white shadow-sm bg-[#021f19]" />
                       )}
                     </div>
                   );
                 })}
               </div>
             </div>
-            <div className="px-6 py-4 md:px-10 md:py-5 border-t border-slate-200 flex items-center justify-between bg-white shrink-0">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Cancel</button>
-              <button type="submit" className="px-8 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg transition-all">Save Record</button>
+            <div className="px-6 py-4 md:px-10 md:py-5 border-t border-emerald-500/20 flex items-center justify-between bg-[#021f19] shrink-0">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-sm font-bold text-emerald-300 hover:bg-emerald-500/20 rounded-xl transition-colors">Cancel</button>
+              <button type="submit" className="px-8 py-3 text-sm font-black text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 rounded-xl shadow-lg shadow-emerald-950/60 transition-all">Save Record</button>
             </div>
           </form>
         </div>,
@@ -1232,29 +1403,29 @@ Confidential Medical Report. Hospital Seal Applied.
       )}
 
       {statusUpdateRow && createPortal(
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[99999] flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-5">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[99999] flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-150 text-white">
+          <div className="bg-[#021f19] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-emerald-500/30 space-y-5">
+            <div className="flex justify-between items-center border-b border-emerald-500/20 pb-4">
               <div className="flex items-center space-x-3">
-                <div className="p-2.5 bg-blue-100 text-blue-700 rounded-xl">
+                <div className="p-2.5 bg-emerald-500/20 text-emerald-300 rounded-xl border border-emerald-500/40">
                   <RefreshCw className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-lg">Update Patient Status</h3>
-                  <p className="text-xs text-slate-500">{statusUpdateRow['Patient Name'] || statusUpdateRow['Patient'] || statusUpdateRow['Name'] || 'Patient Record'}</p>
+                  <h3 className="font-bold text-white text-lg">Update Patient Status</h3>
+                  <p className="text-xs text-emerald-300/70">{statusUpdateRow['Patient Name'] || statusUpdateRow['Patient'] || statusUpdateRow['Name'] || 'Patient Record'}</p>
                 </div>
               </div>
-              <button onClick={() => setStatusUpdateRow(null)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+              <button onClick={() => setStatusUpdateRow(null)} className="text-emerald-300/70 hover:text-white p-1.5 rounded-lg hover:bg-emerald-500/20">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">Select Current Clinical Status</label>
+              <label className="block text-xs font-bold text-emerald-300/90 uppercase tracking-wider">Select Current Clinical Status</label>
               <select
                 value={selectedNewStatus}
                 onChange={(e) => setSelectedNewStatus(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-slate-800 bg-white cursor-pointer shadow-sm text-sm"
+                className="w-full px-4 py-3 border border-emerald-500/40 rounded-xl focus:ring-2 focus:ring-emerald-400 font-bold text-white bg-emerald-950/80 cursor-pointer shadow-sm text-sm"
               >
                 <option value="Scheduled">Scheduled (Waiting for Consultation)</option>
                 <option value="In Consultation">In Consultation (Doctor Examining)</option>
@@ -1265,14 +1436,14 @@ Confidential Medical Report. Hospital Seal Applied.
               </select>
             </div>
 
-            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
-              <button onClick={() => setStatusUpdateRow(null)} className="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-emerald-500/20">
+              <button onClick={() => setStatusUpdateRow(null)} className="px-5 py-2.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20 rounded-xl">Cancel</button>
               <button
                 onClick={() => {
                   handleStatusUpdate(statusUpdateRow.id, selectedNewStatus);
                   setStatusUpdateRow(null);
                 }}
-                className="px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 transition-all"
+                className="px-6 py-2.5 text-xs font-black text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 rounded-xl shadow-lg shadow-emerald-950/60 transition-all"
               >
                 Save & Update Status
               </button>
@@ -1283,37 +1454,37 @@ Confidential Medical Report. Hospital Seal Applied.
       )}
 
       {selectedViewRecord && createPortal(
-        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[99999] flex flex-col w-screen h-screen overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex justify-between items-center px-6 py-4 md:px-10 md:py-5 border-b border-slate-800 bg-slate-900 text-white shrink-0 shadow-md">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-xl z-[99999] flex flex-col w-screen h-screen overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-white">
+          <div className="flex justify-between items-center px-6 py-4 md:px-10 md:py-5 border-b border-emerald-500/20 bg-[#021f19] text-white shrink-0 shadow-md">
             <div className="flex items-center space-x-3">
-              <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-md shadow-blue-600/30">
+              <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl text-emerald-300 shadow-md shadow-emerald-600/30">
                 <Eye className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-bold tracking-tight text-white">{title} — Full Screen Record Detail</h2>
-                <p className="text-xs text-slate-400">Complete clinical data record snapshot</p>
+                <h2 className="text-xl font-black tracking-tight text-white">{title} — Full Screen Record Detail</h2>
+                <p className="text-xs text-emerald-300/80">Complete clinical data record snapshot</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <button 
                 type="button" 
                 onClick={() => setSelectedViewRecord(null)} 
-                className="flex items-center space-x-2 px-5 py-2.5 bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all border border-slate-700 shadow-sm"
+                className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-950/70 hover:bg-rose-950/80 text-emerald-200 hover:text-rose-300 rounded-xl text-xs font-bold transition-all border border-emerald-500/30 shadow-sm"
               >
                 <X className="w-4 h-4" />
                 <span>Close Full Screen</span>
               </button>
             </div>
           </div>
-          <div className="p-6 md:p-12 overflow-y-auto flex-1 space-y-8 bg-slate-950/95 scrollbar-thin">
+          <div className="p-6 md:p-12 overflow-y-auto flex-1 space-y-8 bg-[#011712] scrollbar-thin">
             <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {Object.entries(selectedViewRecord).map(([key, val], kIdx) => {
                 if (key === 'id') return null;
                 const isPain = key.toLowerCase().includes('pain');
                 const isStatus = key.toLowerCase().includes('status') || key.toLowerCase().includes('availability');
                 return (
-                  <div key={kIdx} className="p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl hover:border-slate-700 transition-all flex flex-col justify-between">
-                    <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{key}</span>
+                  <div key={kIdx} className="p-6 bg-[#021f19] border border-emerald-500/20 rounded-2xl shadow-xl hover:border-emerald-500/40 transition-all flex flex-col justify-between">
+                    <span className="block text-xs font-bold text-emerald-400/80 uppercase tracking-wider mb-3">{key}</span>
                     <div>
                       {isPain ? (
                         <PainScaleBadge val={val} />
@@ -1334,22 +1505,30 @@ Confidential Medical Report. Hospital Seal Applied.
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-          <p className="text-sm text-slate-500 mt-1">{description}</p>
+          <h1 className="text-2xl font-black text-white tracking-tight">{title}</h1>
+          <p className="text-sm text-emerald-300/80 mt-1 font-medium">{description}</p>
         </div>
         <div className="flex items-center space-x-3">
-          <button onClick={() => setData([...data].reverse())} className="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 shadow-sm">Refresh</button>
-          <button onClick={handleOpenModal} className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-200">Add New Entry</button>
+          <button onClick={() => fetchLatestData ? fetchLatestData() : setData([...data].reverse())} className="flex items-center space-x-1.5 px-4 py-2 bg-emerald-950/70 border border-emerald-500/30 hover:bg-emerald-900/90 rounded-xl text-sm font-bold text-emerald-200 shadow-sm transition-colors">
+            <RefreshCw className="w-4 h-4 text-emerald-400" />
+            <span>Refresh</span>
+          </button>
+          {allowAdd && (
+            <button onClick={handleOpenModal} className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-950/60 transition-all">
+              <Plus className="w-4 h-4" />
+              <span>Add New Entry</span>
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-4 justify-between bg-slate-50/50">
+      <div className="bg-[#021f19]/75 backdrop-blur-2xl rounded-2xl border border-emerald-500/20 shadow-2xl overflow-hidden text-slate-100">
+        <div className="p-4 border-b border-emerald-500/20 flex flex-col sm:flex-row gap-4 justify-between bg-[#011712]/60">
           <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => {setSearchQuery(e.target.value); setCurrentPage(1);}} className="w-full pl-10 pr-4 py-2 border rounded-xl text-sm" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400/60" />
+            <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => {setSearchQuery(e.target.value); setCurrentPage(1);}} className="w-full pl-10 pr-4 py-2 bg-emerald-950/70 border border-emerald-500/30 rounded-xl text-sm text-white placeholder-emerald-400/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/50" />
           </div>
-          <select value={filterStatus} onChange={(e) => {setFilterStatus(e.target.value); setCurrentPage(1);}} className="px-3 py-2 border rounded-xl text-sm cursor-pointer">
+          <select value={filterStatus} onChange={(e) => {setFilterStatus(e.target.value); setCurrentPage(1);}} className="px-3 py-2 bg-emerald-950/70 border border-emerald-500/30 rounded-xl text-sm font-semibold text-emerald-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-400/50">
             <option value="All">All Statuses</option>
             <option value="Active">Active</option>
             <option value="Completed">Completed</option>
@@ -1357,7 +1536,7 @@ Confidential Medical Report. Hospital Seal Applied.
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200">
+            <thead className="bg-[#011712]/80 text-emerald-300/80 uppercase font-bold text-[11px] tracking-wider border-b border-emerald-500/20">
               <tr>
                 {cols.map((col, idx) => (
                   <th key={idx} className="px-6 py-4">{col}</th>
@@ -1365,24 +1544,47 @@ Confidential Medical Report. Hospital Seal Applied.
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-emerald-500/10">
               {paginatedData.length > 0 ? (
                 paginatedData.map((row, rowIdx) => (
-                  <tr key={row.id || rowIdx} className="hover:bg-slate-50/70 transition-colors group">
+                  <tr 
+                    key={row.id || rowIdx} 
+                    className={`hover:bg-emerald-500/10 transition-colors group ${isBilling ? 'cursor-pointer' : ''}`}
+                    onClick={(e) => {
+                      if (isBilling && !e.target.closest('button')) {
+                        setSelectedInvoiceModal(row);
+                      }
+                    }}
+                  >
                     {cols.map((col, colIdx) => {
                       const rawVal = row[col] !== undefined && row[col] !== null
                         ? row[col]
                         : (col.toLowerCase().includes('doctor')
-                            ? (row.Doctor || row['Doctor Name'] || row['Attending Doctor'] || row.doctor || 'Dr. Madhavan')
-                            : (row[col.toLowerCase()] !== undefined ? row[col.toLowerCase()] : 'N/A'));
+                            ? (row.Doctor || row['Doctor Name'] || row['Attending Doctor'] || row.doctor || loggedDoctorName || 'Dr. Madhavan')
+                            : (col.toLowerCase().includes('recorded by') || col.toLowerCase().includes('nurse in-charge') || col.toLowerCase().includes('administered by') || col.toLowerCase().includes('added by') || col.toLowerCase().includes('nurse'))
+                              ? (row['Recorded By'] || row['Nurse In-charge'] || row['Administered By'] || row['Added By'] || loggedNurseName || 'Selvi. V. Mary')
+                              : (col.toLowerCase() === 'name' || col.toLowerCase() === 'patient' || col.toLowerCase() === 'patient name')
+                                ? (row.Name || row.Patient || row['Patient Name'] || 'Aarav Kumar')
+                                : (row[col.toLowerCase()] !== undefined ? row[col.toLowerCase()] : 'N/A'));
                       const val = typeof rawVal === 'object' && rawVal !== null ? JSON.stringify(rawVal) : (rawVal !== undefined && rawVal !== null ? String(rawVal) : 'N/A');
                       const isStatusCol = col.toLowerCase().includes('status') || col.toLowerCase().includes('availability');
                       const isPainCol = col.toLowerCase().includes('pain');
+                      const isNameCol = col.toLowerCase() === 'name' || col.toLowerCase() === 'patient' || col.toLowerCase() === 'patient name';
 
                       return (
-                        <td key={colIdx} className="px-6 py-4 text-slate-700">
+                        <td key={colIdx} className="px-6 py-4 text-emerald-100">
                           {colIdx === 0 ? (
-                            <span className="font-semibold text-slate-900">{val}</span>
+                            <span className="font-bold text-white">{val}</span>
+                          ) : isNameCol && isBilling ? (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSelectedInvoiceModal(row); }}
+                              className="font-bold text-emerald-300 hover:text-white hover:underline text-left inline-flex items-center space-x-1"
+                              title="Click to view and print invoice"
+                            >
+                              <span>{val}</span>
+                              <FileText className="w-3.5 h-3.5 text-emerald-400 opacity-80" />
+                            </button>
                           ) : isPainCol ? (
                             <PainScaleBadge val={val} />
                           ) : isStatusCol ? (
@@ -1400,7 +1602,7 @@ Confidential Medical Report. Hospital Seal Applied.
                           setSelectedNewStatus(row.Status || row.status || 'In Consultation');
                         }}
                         title="Update Patient Current Status"
-                        className="inline-flex items-center px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200 shadow-sm mr-1"
+                        className="inline-flex items-center px-2.5 py-1 text-xs font-bold text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900/90 rounded-lg transition-all border border-emerald-500/40 shadow-sm mr-1"
                       >
                         <RefreshCw className="w-3.5 h-3.5 mr-1" />
                         Update Status
@@ -1408,16 +1610,16 @@ Confidential Medical Report. Hospital Seal Applied.
                       <button
                         onClick={() => { setSelectedViewRecord(row); setIsFullScreen(false); }}
                         title="View Details in Full Screen"
-                        className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200"
+                        className="inline-flex items-center px-2.5 py-1 text-xs font-bold text-slate-200 bg-emerald-950/60 hover:bg-emerald-900/80 rounded-lg transition-all border border-emerald-500/25"
                       >
-                        <Eye className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                        <Eye className="w-3.5 h-3.5 mr-1 text-emerald-400" />
                         View
                       </button>
                       {isLabReport && (
                         <button
                           onClick={() => handleDownloadReport(row)}
                           title="Download Lab Report"
-                          className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
+                          className="inline-flex items-center px-2.5 py-1 text-xs font-bold text-teal-300 bg-teal-950/60 hover:bg-teal-900/80 rounded-lg transition-all border border-teal-500/30"
                         >
                           <Download className="w-3.5 h-3.5 mr-1" />
                           Download
@@ -1428,7 +1630,7 @@ Confidential Medical Report. Hospital Seal Applied.
                           <button
                             onClick={() => handlePrintInvoice(row)}
                             title="Print Official Bill"
-                            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors border border-teal-200"
+                            className="inline-flex items-center px-2.5 py-1 text-xs font-bold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900/90 rounded-lg transition-all border border-emerald-500/30"
                           >
                             <Printer className="w-3.5 h-3.5 mr-1" />
                             Print Bill
@@ -1436,7 +1638,7 @@ Confidential Medical Report. Hospital Seal Applied.
                           <button
                             onClick={() => handleDownloadInvoicePDF(row)}
                             title="Download Invoice PDF"
-                            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
+                            className="inline-flex items-center px-2.5 py-1 text-xs font-bold text-teal-300 bg-teal-950/70 hover:bg-teal-900/90 rounded-lg transition-all border border-teal-500/30"
                           >
                             <Download className="w-3.5 h-3.5 mr-1" />
                             PDF
@@ -1446,7 +1648,7 @@ Confidential Medical Report. Hospital Seal Applied.
                       <button
                         onClick={() => handleDelete(row.id)}
                         title="Delete record"
-                        className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
+                        className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-950/50 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1455,7 +1657,7 @@ Confidential Medical Report. Hospital Seal Applied.
                 ))
               ) : (
                 <tr>
-                  <td colSpan={cols.length + 1} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={cols.length + 1} className="px-6 py-12 text-center text-emerald-400/60">
                     No matching records found.
                   </td>
                 </tr>
@@ -1465,17 +1667,17 @@ Confidential Medical Report. Hospital Seal Applied.
         </div>
 
         {/* Footer / Pagination */}
-        <div className="p-4 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-slate-500 bg-slate-50/50">
+        <div className="p-4 border-t border-emerald-500/20 flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-emerald-300/80 bg-[#011712]/60">
           <span>
             Showing {filteredData.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{' '}
             {Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length} records
           </span>
           
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1.5">
             <button
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
               disabled={currentPage === 1}
-              className="p-1.5 border border-slate-200 rounded-lg hover:bg-white bg-slate-100 disabled:opacity-40 transition-colors"
+              className="p-1.5 border border-emerald-500/30 rounded-lg hover:bg-emerald-900/80 bg-emerald-950/70 text-emerald-200 disabled:opacity-30 transition-all"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -1484,10 +1686,10 @@ Confidential Medical Report. Hospital Seal Applied.
               <button
                 key={pg}
                 onClick={() => setCurrentPage(pg)}
-                className={`px-3 py-1 text-xs font-semibold border rounded-lg transition-colors ${
+                className={`px-3 py-1 text-xs font-black rounded-lg transition-all ${
                   currentPage === pg
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-white text-emerald-950 shadow-md scale-105'
+                    : 'bg-emerald-950/70 text-emerald-200 border border-emerald-500/30 hover:bg-emerald-900/80'
                 }`}
               >
                 {pg}
@@ -1497,7 +1699,7 @@ Confidential Medical Report. Hospital Seal Applied.
             <button
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="p-1.5 border border-slate-200 rounded-lg hover:bg-white bg-slate-100 disabled:opacity-40 transition-colors"
+              className="p-1.5 border border-emerald-500/30 rounded-lg hover:bg-emerald-900/80 bg-emerald-950/70 text-emerald-200 disabled:opacity-30 transition-all"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -1507,47 +1709,67 @@ Confidential Medical Report. Hospital Seal Applied.
 
       {/* Printable Hospital Invoice & Bill Modal */}
       {selectedInvoiceModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-8">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden my-8 border border-slate-100">
             <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
-              <h3 className="font-bold text-slate-800">Print Preview - Official Bill</h3>
-              <button onClick={() => setSelectedInvoiceModal(null)} className="text-slate-400 hover:text-slate-600">
+              <div className="flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-800 text-base">Patient Tax Invoice</h3>
+              </div>
+              <button onClick={() => setSelectedInvoiceModal(null)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/50">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 max-h-[70vh] overflow-y-auto" id="printable-invoice-content">
-              <div className="invoice-card">
-                <div className="flex justify-between items-center pb-4 border-b border-slate-200">
+            <div className="p-6 max-h-[75vh] overflow-y-auto" id="printable-invoice-content">
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200/80 space-y-4 shadow-sm">
+                <div className="flex justify-between items-start border-b border-slate-200 pb-3">
                   <div>
-                    <h2 className="text-xl font-bold text-blue-900">City Care General Hospital</h2>
-                    <p className="text-xs text-slate-500">123 Healthcare Boulevard, Medical District • Phone: +91 98765 43210</p>
+                    <h2 className="text-lg font-black text-slate-900 tracking-wide">CITY CARE GENERAL HOSPITAL</h2>
+                    <p className="text-xs text-slate-500 font-medium">Multi-Specialty Healthcare & Medical Center</p>
                   </div>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">Official Receipt</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 py-4 border-b border-slate-200 text-sm">
-                  <div>
-                    <p className="text-xs text-slate-400 uppercase font-semibold">Bill / Invoice ID</p>
-                    <p className="font-bold text-slate-800">{selectedInvoiceModal['Bill ID'] || selectedInvoiceModal['Invoice ID'] || `INV-2026-${selectedInvoiceModal.id}`}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 uppercase font-semibold">Patient Name</p>
-                    <p className="font-bold text-slate-800">{selectedInvoiceModal['Patient'] || selectedInvoiceModal['Patient Name'] || 'Aarav Kumar'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 uppercase font-semibold">Date & Time</p>
-                    <p className="font-bold text-slate-800">{selectedInvoiceModal['Date & Time'] || selectedInvoiceModal['Date'] || '2026-08-13 10:30 AM'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 uppercase font-semibold">Status</p>
-                    <p className="font-bold text-emerald-600">{selectedInvoiceModal['Payment Status'] || selectedInvoiceModal['Status'] || 'Paid'}</p>
+                  <div className="text-right">
+                    <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">Official Receipt</span>
+                    <p className="text-[11px] text-slate-400 font-mono mt-1">{selectedInvoiceModal['Invoice ID'] || selectedInvoiceModal['Bill ID'] || `INV-2026-${selectedInvoiceModal.id}`}</p>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-xl flex justify-between items-center mt-4 text-blue-900 font-bold">
-                  <span>Total Amount Paid:</span>
-                  <span className="text-xl">{selectedInvoiceModal['Total Amount'] || selectedInvoiceModal['Amount'] || '$109.50'}</span>
+                {/* Requested Format */}
+                <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-3 text-sm">
+                  <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">name</span>
+                    <span className="text-base font-black text-slate-900">{selectedInvoiceModal.Name || selectedInvoiceModal.Patient || selectedInvoiceModal['Patient Name'] || 'Aarav Kumar'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-slate-600 font-medium">consulation charge</span>
+                    <span className="font-bold text-slate-900">{selectedInvoiceModal['Consultation Charge'] || selectedInvoiceModal['Consultation Fee'] || selectedInvoiceModal.Consultation || '$50.00'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-slate-600 font-medium">lab charge</span>
+                    <span className="font-bold text-slate-900">{selectedInvoiceModal['Lab Charge'] || selectedInvoiceModal['Lab Charges'] || selectedInvoiceModal.Lab || '$35.00'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-slate-600 font-medium">pharmacy charge</span>
+                    <span className="font-bold text-slate-900">{selectedInvoiceModal['Pharmacy Charge'] || selectedInvoiceModal['Pharmacy Charges'] || selectedInvoiceModal.Pharmacy || '$24.50'}</span>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-slate-200 flex justify-between items-center">
+                    <span className="text-base font-black text-slate-900 uppercase tracking-wide">total :</span>
+                    <span className="text-xl font-black text-blue-700">{selectedInvoiceModal.Total || selectedInvoiceModal['Total Amount'] || selectedInvoiceModal.Amount || '$109.50'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 text-xs border-t border-slate-100">
+                    <span className="font-bold text-slate-500 uppercase tracking-wider">status :</span>
+                    <span className="font-bold text-emerald-600 text-sm">{selectedInvoiceModal.Status || selectedInvoiceModal['Payment Status'] || 'Paid'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-500 uppercase tracking-wider">payment mode :</span>
+                    <span className="font-bold text-slate-800 text-sm">{selectedInvoiceModal['Payment Mode'] || selectedInvoiceModal.Method || selectedInvoiceModal['Payment Method'] || 'Online Payment Desk'}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1555,16 +1777,23 @@ Confidential Medical Report. Hospital Seal Applied.
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-3">
               <button
                 onClick={() => setSelectedInvoiceModal(null)}
-                className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-100"
+                className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-100"
               >
                 Close
               </button>
               <button
-                onClick={handleExecutePrintWindow}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold flex items-center shadow-md shadow-blue-200"
+                onClick={() => handleDownloadInvoicePDF(selectedInvoiceModal)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center shadow-sm"
               >
-                <Printer className="w-4 h-4 mr-2" />
-                Print Official A4 Bill
+                <Download className="w-4 h-4 mr-1.5" />
+                Download PDF
+              </button>
+              <button
+                onClick={() => handlePrintInvoice(selectedInvoiceModal)}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center shadow-md shadow-blue-200"
+              >
+                <Printer className="w-4 h-4 mr-1.5" />
+                Print Invoice
               </button>
             </div>
           </div>
@@ -6607,27 +6836,111 @@ const WardManagement = () => <NursePortalDashboard initialTab="ward" />;
 const MedicationAdmin = () => <NursePortalDashboard initialTab="mar" />;
 const NursingNotes = () => <NursePortalDashboard initialTab="notes" />;
 
-
 // 5. Laboratory
-const TestRequestLab = () => <GenericPage title="Test Request" description="Pending lab requests from doctors." cols={['Req ID', 'Patient', 'Test Type', 'Priority', 'Requested By']} apiEndpoint="/api/v1/laboratory/test-request" defaultData={[{ id: 1, 'Req ID': 'LAB-401', Patient: 'Aarav Kumar', 'Test Type': 'CBC Blood Profile', Priority: 'Normal', 'Requested By': 'Dr. Priya Nair' }]} />;
-const SampleCollection = () => <GenericPage title="Sample Collection" description="Track sample barcode status." cols={['Sample ID', 'Patient', 'Test Name', 'Collected By', 'Status']} apiEndpoint="/api/v1/laboratory/sample-collection" defaultData={[{ id: 1, 'Sample ID': 'SMP-991', Patient: 'Aarav Kumar', 'Test Name': 'CBC Blood Sample', 'Collected By': 'Anil Mehta', Status: 'Collected' }]} />;
-const ReportEntry = () => <GenericPage title="Report Entry" description="Enter diagnostic laboratory findings." cols={['Test ID', 'Patient', 'Result Summary', 'Verified By', 'Status']} apiEndpoint="/api/v1/laboratory/report-entry" isLabReport={true} defaultData={[{ id: 1, 'Test ID': 'LAB-401', Patient: 'Aarav Kumar', 'Result Summary': 'Hemoglobin 14.2 g/dL (Normal)', 'Verified By': 'Anil Mehta', Status: 'Verified' }]} />;
-const ReportUpload = () => <GenericPage title="Report Upload" description="Upload and download scanned diagnostic reports." cols={['Document ID', 'Patient', 'File Name', 'Upload Date', 'Status']} apiEndpoint="/api/v1/laboratory/report-upload" isLabReport={true} defaultData={[{ id: 1, 'Document ID': 'DOC-201', Patient: 'Siddharth Roy', 'File Name': 'Knee_MRI_Scan.pdf', 'Upload Date': '2026-08-13 14:20 PM', Status: 'Completed' }]} />;
+const TestRequestLab = () => (
+  <LabPageLayout 
+    title="Test Requests & Shift Prescriptions" 
+    description="Diagnostic test requests automatically synced from doctor clinical prescriptions with workstation routing."
+  >
+    <GenericPage title="Test Request" description="Diagnostic test requests automatically synced from doctor clinical prescriptions (Auto-synced from doctor portal)." cols={['Req ID', 'Patient', 'Test Type', 'Priority', 'Requested By', 'Status']} apiEndpoint="/api/v1/laboratory/test-request" allowAdd={false} defaultData={[{ id: 1, 'Req ID': 'LAB-401', Patient: 'Aarav Kumar', 'Test Type': 'CBC Blood Profile & Lipid', Priority: 'Normal', 'Requested By': 'Dr. Madhavan', Status: 'Requested' }, { id: 2, 'Req ID': 'LAB-402', Patient: 'Rajesh Patel', 'Test Type': 'EEG & Brain MRI Scan', Priority: 'High', 'Requested By': 'Dr. S. Karthikeyan', Status: 'Requested' }]} />
+  </LabPageLayout>
+);
+const SampleCollection = () => (
+  <LabPageLayout 
+    title="Sample Collection & Barcode Tracking" 
+    description="Track specimen barcode status, phlebotomy timestamps, and tube racks across all 7 shift sections."
+  >
+    <GenericPage title="Sample Collection" description="Track sample barcode status across all 7 laboratory shift sections." cols={['Sample ID', 'Patient', 'Test Name', 'Collected By', 'Status']} apiEndpoint="/api/v1/laboratory/sample-collection" defaultData={[{ id: 1, 'Sample ID': 'SMP-991', Patient: 'Aarav Kumar', 'Test Name': 'CBC Blood Sample', 'Collected By': 'Anil Mehta', Status: 'Collected' }]} />
+  </LabPageLayout>
+);
+const ReportEntry = () => (
+  <LabPageLayout 
+    title="Report Entry & Result Verification" 
+    description="Enter diagnostic laboratory findings with section-specific normal biological reference ranges."
+  >
+    <GenericPage title="Report Entry" description="Enter diagnostic laboratory findings with section normal reference ranges." cols={['Test ID', 'Patient', 'Result Summary', 'Verified By', 'Status']} apiEndpoint="/api/v1/laboratory/report-entry" isLabReport={true} defaultData={[{ id: 1, 'Test ID': 'LAB-401', Patient: 'Aarav Kumar', 'Result Summary': 'Hemoglobin 14.2 g/dL (Normal)', 'Verified By': 'Anil Mehta', Status: 'Verified' }]} />
+  </LabPageLayout>
+);
+const ReportUpload = () => (
+  <LabPageLayout 
+    title="Report Upload & Document Archive" 
+    description="Upload and download scanned diagnostic reports across all laboratory sections."
+  >
+    <GenericPage title="Report Upload" description="Upload and download scanned diagnostic reports across all laboratory sections." cols={['Document ID', 'Patient', 'File Name', 'Upload Date', 'Status']} apiEndpoint="/api/v1/laboratory/report-upload" isLabReport={true} defaultData={[{ id: 1, 'Document ID': 'DOC-201', Patient: 'Siddharth Roy', 'File Name': 'Knee_MRI_Scan.pdf', 'Upload Date': '2026-08-20 14:20 PM', Status: 'Completed' }]} />
+  </LabPageLayout>
+);
+
 
 // 6. Pharmacy
 const MedicineInventory = () => <GenericPage title="Medicine Inventory" description="Manage pharmacy stock and expiry dates." cols={['Medicine Name', 'Batch No', 'Expiry Date', 'Stock Qty', 'Status']} apiEndpoint="/api/v1/pharmacy/inventory" defaultData={[{ id: 1, 'Medicine Name': 'Paracetamol 650mg', 'Batch No': 'BAT-2024-X', 'Expiry Date': '2027-11-30 23:59 PM', 'Stock Qty': '1,200 Tabs', Status: 'Available' }]} />;
 const PrescriptionProcessing = () => <GenericPage title="Prescription Processing" description="Dispense medicines for prescriptions." cols={['Prescription ID', 'Patient', 'Doctor', 'Status']} apiEndpoint="/api/v1/pharmacy/prescription-processing" defaultData={[{ id: 1, 'Prescription ID': 'RX-501', Patient: 'Aarav Kumar', Doctor: 'Dr. Priya Nair', Status: 'Ready for Dispense' }]} />;
-const MedicineBilling = () => <GenericPage title="Medicine Billing" description="Bill medicines to patients." cols={['Bill ID', 'Patient', 'Total Amount', 'Payment Status']} apiEndpoint="/api/v1/pharmacy/medicine-billing" isBilling={true} defaultData={[{ id: 1, 'Bill ID': 'PH-901', Patient: 'Aarav Kumar', 'Total Amount': '$24.50', 'Payment Status': 'Paid' }]} />;
+const MedicineBilling = () => <GenericPage title="Medicine Billing" description="Bill medicines to patients." cols={['Bill ID', 'Patient', 'Total Amount', 'Payment Status']} apiEndpoint="/api/v1/pharmacy/medicine-billing" defaultData={[{ id: 1, 'Bill ID': 'PH-901', Patient: 'Aarav Kumar', 'Total Amount': '$24.50', 'Payment Status': 'Paid' }]} />;
 const StockAlerts = () => <GenericPage title="Stock Alerts" description="Low stock and re-order alerts." cols={['Medicine Name', 'Alert Type', 'Current Stock', 'Action Required']} apiEndpoint="/api/v1/pharmacy/stock-alerts" defaultData={[{ id: 1, 'Medicine Name': 'Pantoprazole 40mg', 'Alert Type': 'Low Stock', 'Current Stock': '80 Tabs', 'Action Required': 'Re-order 500 Tabs' }]} />;
 
 // 7. Inpatient (IP)
 const RoomAllocation = () => <GenericPage title="Room Allocation" description="Assign beds and rooms to patients." cols={['Room No', 'Ward Type', 'Patient', 'Status']} apiEndpoint="/api/v1/inpatient/room-allocation" defaultData={[{ id: 1, 'Room No': 'Room 101', 'Ward Type': 'Deluxe Private', Patient: 'Siddharth Roy', Status: 'Occupied' }]} />;
 const Admission = () => <GenericPage title="Admission" description="Manage IP admissions." cols={['Admission ID', 'Patient', 'Admitted Date', 'Attending Doctor', 'Status']} apiEndpoint="/api/v1/inpatient/admissions" defaultData={[{ id: 1, 'Admission ID': 'IPD-301', Patient: 'Siddharth Roy', 'Admitted Date': '2026-08-10 11:45 AM', 'Attending Doctor': 'Dr. Vikram Malhotra', Status: 'Admitted' }]} />;
 const TreatmentRecords = () => <GenericPage title="Treatment Records" description="Inpatient treatment history." cols={['Patient', 'Treatment Details', 'Date', 'Doctor']} apiEndpoint="/api/v1/inpatient/treatment-records" defaultData={[{ id: 1, Patient: 'Siddharth Roy', 'Treatment Details': 'Knee Surgery', Date: '2026-08-11 10:00 AM', Doctor: 'Dr. Vikram Malhotra' }]} />;
-const DailyProgress = () => <GenericPage title="Daily Progress" description="Daily clinical notes for IP." cols={['Patient', 'Progress Note', 'Added By', 'Date']} apiEndpoint="/api/v1/inpatient/daily-progress" defaultData={[{ id: 1, Patient: 'Siddharth Roy', 'Progress Note': 'Post-op Day 1: Wound clean, active motion exercises started.', 'Added By': 'Dr. Vikram Malhotra', Date: '2026-08-13 09:00 AM' }]} />;
-const DischargeSummary = () => <GenericPage title="Discharge Summary" description="Prepare discharge summaries." cols={['Patient', 'Discharge Date', 'Summary Status', 'Prepared By']} apiEndpoint="/api/v1/inpatient/discharge-summary" isLabReport={true} defaultData={[{ id: 1, Patient: 'Karan Malhotra', 'Discharge Date': '2026-08-13 16:30 PM', 'Summary Status': 'Completed', 'Prepared By': 'Dr. Robert Chen' }]} />;
+const DailyProgress = () => <GenericPage title="Daily Progress" description="Daily clinical notes for IP." cols={['Patient', 'Progress Note', 'Added By', 'Date']} apiEndpoint="/api/v1/inpatient/daily-progress" defaultData={[{ id: 1, Patient: 'Siddharth Roy', 'Progress Note': 'Post-op Day 1: Wound clean, active motion exercises started.', 'Added By': 'Dr. Vikram Malhotra', Date: '2026-08-20 09:00 AM' }]} />;
+const DischargeSummary = () => <GenericPage title="Discharge Summary" description="Prepare discharge summaries." cols={['Patient', 'Discharge Date', 'Summary Status', 'Prepared By']} apiEndpoint="/api/v1/inpatient/discharge-summary" isLabReport={true} defaultData={[{ id: 1, Patient: 'Karan Malhotra', 'Discharge Date': '2026-08-20 16:30 PM', 'Summary Status': 'Completed', 'Prepared By': 'Dr. Robert Chen' }]} />;
 
 // 8. Billing
+const LabCharges = () => <GenericPage title="Lab Charges" description="Manage diagnostic charges breakdown." cols={['Patient', 'Test Name', 'Amount', 'Status']} apiEndpoint="/api/v1/billing/lab-charges" defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Test Name': 'CBC Blood Profile', Amount: '₹350.00', Status: 'Paid' }]} />;
+const PharmacyCharges = () => <GenericPage title="Pharmacy Charges" description="Medicine charges breakdown." cols={['Patient', 'Bill ID', 'Amount', 'Date', 'Status']} apiEndpoint="/api/v1/billing/pharmacy-charges" defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Bill ID': 'PH-901', Amount: '₹245.00', Date: '2026-08-20 11:00 AM', Status: 'Paid' }]} />;
+const RoomCharges = () => <GenericPage title="Room Charges" description="IPD room and bed charges breakdown." cols={['Patient', 'Days Stayed', 'Total Amount', 'Status']} apiEndpoint="/api/v1/billing/room-charges" defaultData={[{ id: 1, Patient: 'Siddharth Roy', 'Days Stayed': '2 Days', 'Total Amount': '₹3,000.00', Status: 'Pending' }]} />;
+const PaymentGateway = () => <GenericPage title="Payment Gateway" description="Online transaction logs." cols={['Transaction ID', 'Patient', 'Amount', 'Method', 'Status']} apiEndpoint="/api/v1/billing/payment-gateway" defaultData={[{ id: 1, 'Transaction ID': 'TXN-9901', Patient: 'Aarav Kumar', Amount: '₹1,095.00', Method: 'UPI', Status: 'Completed' }]} />;
+const InvoiceGeneration = () => <GenericPage 
+  title="Invoice Generation" 
+  description="Consolidated patient tax invoice generation with instant Print and PDF receipts." 
+  cols={['Invoice ID', 'Name', 'Consultation Charge', 'Lab Charge', 'Pharmacy Charge', 'Total', 'Status', 'Payment Mode', 'Date']} 
+  apiEndpoint="/api/v1/billing/invoices" 
+  isBilling={true} 
+  defaultData={[
+    { 
+      id: 1, 
+      'Invoice ID': 'INV-2026-01', 
+      Name: 'Aarav Kumar', 
+      Patient: 'Aarav Kumar', 
+      'Consultation Charge': '₹500.00', 
+      'Lab Charge': '₹350.00', 
+      'Pharmacy Charge': '₹245.00', 
+      Total: '₹1,095.00', 
+      'Total Amount': '₹1,095.00', 
+      Date: '2026-08-20 11:30 AM', 
+      Status: 'Paid',
+      'Payment Mode': 'UPI / Online Desk'
+    },
+    { 
+      id: 2, 
+      'Invoice ID': 'INV-2026-02', 
+      Name: 'Rajesh Patel', 
+      Patient: 'Rajesh Patel', 
+      'Consultation Charge': '₹600.00', 
+      'Lab Charge': '₹850.00', 
+      'Pharmacy Charge': '₹350.00', 
+      Total: '₹1,800.00', 
+      'Total Amount': '₹1,800.00', 
+      Date: '2026-08-20 12:45 PM', 
+      Status: 'Paid',
+      'Payment Mode': 'Credit Card'
+    },
+    { 
+      id: 3, 
+      'Invoice ID': 'INV-2026-03', 
+      Name: 'Siddharth Roy', 
+      Patient: 'Siddharth Roy', 
+      'Consultation Charge': '₹750.00', 
+      'Lab Charge': '₹1,200.00', 
+      'Pharmacy Charge': '₹650.00', 
+      Total: '₹2,600.00', 
+      'Total Amount': '₹2,600.00', 
+      Date: '2026-08-20 02:15 PM', 
+      Status: 'Pending',
+      'Payment Mode': 'Cash Desk'
+    }
+  ]} 
+/>;
+
 // 8a. Rule-Based Billing Engine Dashboard Component
 const ConsultationCharges = () => {
   const [searchQuery, setSearchQuery] = useState('PT-2026-00125');
@@ -7180,13 +7493,71 @@ const PharmacyCharges = () => <GenericPage title="Pharmacy Charges" description=
 const RoomCharges = () => <GenericPage title="Room Charges" description="IPD room and bed charges." cols={['Patient', 'Days Stayed', 'Total Amount', 'Status']} apiEndpoint="/api/v1/billing/room-charges" isBilling={true} defaultData={[{ id: 1, Patient: 'Siddharth Roy', 'Days Stayed': '2 Days', 'Total Amount': '$400.00', Status: 'Pending' }]} />;
 const PaymentGateway = () => <GenericPage title="Payment Gateway" description="Online transaction logs." cols={['Transaction ID', 'Patient', 'Amount', 'Method', 'Status']} apiEndpoint="/api/v1/billing/payment-gateway" isBilling={true} defaultData={[{ id: 1, 'Transaction ID': 'TXN-9901', Patient: 'Aarav Kumar', Amount: '$109.50', Method: 'Credit Card', Status: 'Completed' }]} />;
 const InvoiceGeneration = () => <GenericPage title="Invoice Generation" description="Generate consolidated invoices." cols={['Invoice ID', 'Patient', 'Total Amount', 'Due Date', 'Status']} apiEndpoint="/api/v1/billing/invoices" isBilling={true} defaultData={[{ id: 1, 'Invoice ID': 'INV-2026-01', Patient: 'Aarav Kumar', 'Total Amount': '$109.50', 'Due Date': '2026-08-13 17:00 PM', Status: 'Paid' }]} />;
+=======
+const ConsultationCharges = () => <GenericPage title="Consultation Charges" description="Manage OP consultation fees breakdown." cols={['Patient', 'Doctor', 'Amount', 'Date', 'Status']} apiEndpoint="/api/v1/billing/consultation-charges" defaultData={[{ id: 1, Patient: 'Aarav Kumar', Doctor: 'Dr. Madhavan', Amount: '$50.00', Date: '2026-08-20 10:30 AM', Status: 'Paid' }]} />;
+const LabCharges = () => <GenericPage title="Lab Charges" description="Manage diagnostic charges breakdown." cols={['Patient', 'Test Name', 'Amount', 'Status']} apiEndpoint="/api/v1/billing/lab-charges" defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Test Name': 'CBC Blood Profile', Amount: '$35.00', Status: 'Paid' }]} />;
+const PharmacyCharges = () => <GenericPage title="Pharmacy Charges" description="Medicine charges breakdown." cols={['Patient', 'Bill ID', 'Amount', 'Date', 'Status']} apiEndpoint="/api/v1/billing/pharmacy-charges" defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Bill ID': 'PH-901', Amount: '$24.50', Date: '2026-08-20 11:00 AM', Status: 'Paid' }]} />;
+const RoomCharges = () => <GenericPage title="Room Charges" description="IPD room and bed charges breakdown." cols={['Patient', 'Days Stayed', 'Total Amount', 'Status']} apiEndpoint="/api/v1/billing/room-charges" defaultData={[{ id: 1, Patient: 'Siddharth Roy', 'Days Stayed': '2 Days', 'Total Amount': '$400.00', Status: 'Pending' }]} />;
+const PaymentGateway = () => <GenericPage title="Payment Gateway" description="Online transaction logs." cols={['Transaction ID', 'Patient', 'Amount', 'Method', 'Status']} apiEndpoint="/api/v1/billing/payment-gateway" defaultData={[{ id: 1, 'Transaction ID': 'TXN-9901', Patient: 'Aarav Kumar', Amount: '$109.50', Method: 'Credit Card', Status: 'Completed' }]} />;
+const InvoiceGeneration = () => <GenericPage 
+  title="Invoice Generation" 
+  description="Consolidated patient tax invoice generation with instant Print and PDF receipts." 
+  cols={['Invoice ID', 'Name', 'Consultation Charge', 'Lab Charge', 'Pharmacy Charge', 'Total', 'Status', 'Payment Mode', 'Date']} 
+  apiEndpoint="/api/v1/billing/invoices" 
+  isBilling={true} 
+  defaultData={[
+    { 
+      id: 1, 
+      'Invoice ID': 'INV-2026-01', 
+      Name: 'Aarav Kumar', 
+      Patient: 'Aarav Kumar', 
+      'Consultation Charge': '$50.00', 
+      'Lab Charge': '$35.00', 
+      'Pharmacy Charge': '$24.50', 
+      Total: '$109.50', 
+      'Total Amount': '$109.50', 
+      Date: '2026-08-20 11:30 AM', 
+      Status: 'Paid',
+      'Payment Mode': 'UPI / Online Desk'
+    },
+    { 
+      id: 2, 
+      'Invoice ID': 'INV-2026-02', 
+      Name: 'Rajesh Patel', 
+      Patient: 'Rajesh Patel', 
+      'Consultation Charge': '$60.00', 
+      'Lab Charge': '$85.00', 
+      'Pharmacy Charge': '$35.00', 
+      Total: '$180.00', 
+      'Total Amount': '$180.00', 
+      Date: '2026-08-20 12:45 PM', 
+      Status: 'Paid',
+      'Payment Mode': 'Credit Card'
+    },
+    { 
+      id: 3, 
+      'Invoice ID': 'INV-2026-03', 
+      Name: 'Siddharth Roy', 
+      Patient: 'Siddharth Roy', 
+      'Consultation Charge': '$75.00', 
+      'Lab Charge': '$120.00', 
+      'Pharmacy Charge': '$65.00', 
+      Total: '$260.00', 
+      'Total Amount': '$260.00', 
+      Date: '2026-08-20 02:15 PM', 
+      Status: 'Pending',
+      'Payment Mode': 'Cash Desk'
+    }
+  ]} 
+/>;
+>>>>>>> a81180db7120820a132c7127c10becce0a4c0061
 
 // 9. Patient Portal
 const PortalLogin = () => <GenericPage title="Portal Login Settings" description="Manage portal access." cols={['Patient User', 'Last Login', 'Account Status']} apiEndpoint="/api/v1/portal/login-settings" defaultData={[{ id: 1, 'Patient User': 'aarav.kumar@email.com', 'Last Login': 'Today 09:15 AM', 'Account Status': 'Active' }]} />;
 const BookApptPortal = () => <GenericPage title="Book Appointment" description="Appointments booked via portal." cols={['Patient', 'Doctor', 'Requested Date', 'Status']} apiEndpoint="/api/v1/portal/book-appointment" defaultData={[{ id: 1, Patient: 'Meera Shah', Doctor: 'Dr. Robert Chen', 'Requested Date': '2026-08-14 10:00 AM', Status: 'Confirmed' }]} />;
 const ViewPrescriptionsPortal = () => <GenericPage title="View Prescriptions" description="Prescriptions shared to portal." cols={['Patient', 'Doctor', 'Prescription Date', 'Medicines', 'Status']} apiEndpoint="/api/v1/portal/view-prescriptions" defaultData={[{ id: 1, Patient: 'Aarav Kumar', Doctor: 'Dr. Priya Nair', 'Prescription Date': '2026-08-13 10:30 AM', Medicines: 'Paracetamol 650mg', Status: 'Active' }]} />;
 const DownloadLabReports = () => <GenericPage title="Download Lab Reports" description="Reports accessed by patients with download button." cols={['Patient', 'Report Name', 'Download Date', 'Status']} apiEndpoint="/api/v1/portal/download-reports" isLabReport={true} defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Report Name': 'CBC_Blood_Report', 'Download Date': '2026-08-13 11:15 AM', Status: 'Downloaded' }]} />;
-const OnlinePayment = () => <GenericPage title="Online Payment" description="Payments made via portal." cols={['Patient', 'Amount', 'Date', 'Reference ID', 'Status']} apiEndpoint="/api/v1/portal/online-payment" isBilling={true} defaultData={[{ id: 1, Patient: 'Aarav Kumar', Amount: '$109.50', Date: '2026-08-13 12:45 PM', 'Reference ID': 'PAY-88219', Status: 'Successful' }]} />;
+const OnlinePayment = () => <GenericPage title="Online Payment" description="Payments made via portal." cols={['Patient', 'Amount', 'Date', 'Reference ID', 'Status']} apiEndpoint="/api/v1/portal/online-payment" defaultData={[{ id: 1, Patient: 'Aarav Kumar', Amount: '$109.50', Date: '2026-08-13 12:45 PM', 'Reference ID': 'PAY-88219', Status: 'Successful' }]} />;
 const MedicalHistory = () => <GenericPage title="Medical History" description="Patient EMR access logs." cols={['Patient', 'Accessed Data', 'Date', 'Status']} apiEndpoint="/api/v1/portal/medical-history" defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Accessed Data': 'Immunization & EMR Logs', Date: '2026-08-13 14:00 PM', Status: 'Verified' }]} />;
 
 
@@ -7322,6 +7693,12 @@ function App() {
             <Login onLoginSuccess={handleLoginSuccess} />
           } 
         />
+        <Route 
+          path="/laboratory/login" 
+          element={
+            <LabLogin onLoginSuccess={handleLoginSuccess} />
+          } 
+        />
 
         <Route 
           path="/" 
@@ -7365,10 +7742,12 @@ function App() {
           <Route path="/nurse/nursing-notes" element={<ProtectedRoute user={user} path="/nurse/nursing-notes"><NursingNotes /></ProtectedRoute>} />
           
           {/* 5. Laboratory */}
+          <Route path="/laboratory/sections" element={<ProtectedRoute user={user} path="/laboratory/sections"><LabSectionsPage /></ProtectedRoute>} />
           <Route path="/laboratory/test-request" element={<ProtectedRoute user={user} path="/laboratory/test-request"><TestRequestLab /></ProtectedRoute>} />
           <Route path="/laboratory/sample-collection" element={<ProtectedRoute user={user} path="/laboratory/sample-collection"><SampleCollection /></ProtectedRoute>} />
           <Route path="/laboratory/report-entry" element={<ProtectedRoute user={user} path="/laboratory/report-entry"><ReportEntry /></ProtectedRoute>} />
           <Route path="/laboratory/report-upload" element={<ProtectedRoute user={user} path="/laboratory/report-upload"><ReportUpload /></ProtectedRoute>} />
+          <Route path="/laboratory/login" element={<ProtectedRoute user={user} path="/laboratory/login"><LabLogin onLoginSuccess={handleLoginSuccess} /></ProtectedRoute>} />
           
           {/* 6. Pharmacy */}
           <Route path="/pharmacy/medicine-inventory" element={<ProtectedRoute user={user} path="/pharmacy/medicine-inventory"><MedicineInventory /></ProtectedRoute>} />
