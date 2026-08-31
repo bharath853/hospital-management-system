@@ -189,7 +189,24 @@ def get_lab_test_requests(doctor_name: str = None, db: Session = Depends(get_db)
 def create_lab_test_request(payload: dict, doctor_name: str = None, db: Session = Depends(get_db)):
     if doctor_name and not payload.get("Doctor"):
         payload["Doctor"] = doctor_name
-    return create_generic_record(db, "doctor_lab_requests", payload)
+    rec = create_generic_record(db, "doctor_lab_requests", payload)
+
+    # Sync automatically to laboratory portal table
+    pat = payload.get("Patient") or payload.get("Patient Name") or "Patient"
+    test_type = payload.get("Test Name") or payload.get("Test Type") or "Diagnostic Blood Profile"
+    doc = payload.get("Doctor") or doctor_name or "Doctor"
+    prio = payload.get("Priority") or "Normal"
+    status_val = payload.get("Status") or "Requested"
+    lab_item = {
+        "Req ID": f"LAB-{400 + rec.get('id', 1)}",
+        "Patient": pat,
+        "Test Type": test_type,
+        "Priority": prio,
+        "Requested By": doc,
+        "Status": status_val
+    }
+    create_generic_record(db, "lab_requests", lab_item)
+    return rec
 
 @router.delete("/lab-test-request/{record_id}")
 def delete_lab_test_request(record_id: int, db: Session = Depends(get_db)):

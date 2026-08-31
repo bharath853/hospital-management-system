@@ -24,8 +24,27 @@ class Token(BaseModel):
     token_type: str = "bearer"
     role: str
     name: str
+    lab_section: Optional[str] = None
+    station_id: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
     username: str
     password: str
+    lab_section: Optional[str] = None
+    station_id: Optional[str] = None
+
+
+class MFARequest(BaseModel):
+    username: str
+    otp_code: str
+    lab_section: Optional[str] = None
+    station_id: Optional[str] = None
+
+
+class SSORequest(BaseModel):
+    provider: str = "azure_ad"
+    email: Optional[str] = "anil.mehta@hospital.lims.org"
+    lab_section: Optional[str] = "Hematology"
+    station_id: Optional[str] = "Biochemistry Analyzer-01"
+
