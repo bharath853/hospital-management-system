@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from hms_backend.app.api.v1 import (
-    auth, admin, patients, doctors, appointments, opd, ipd, nursing, laboratory, pharmacy, billing, ambulance, reports, reception, doctor, portal
+    auth, admin, patients, doctors, appointments, opd, ipd, nursing, nurse, laboratory, pharmacy, billing, ambulance, reports, reception, doctor, portal
 )
 
 # API v1 Aggregator Router
@@ -12,6 +12,7 @@ api_v1_router.include_router(patients.router)
 api_v1_router.include_router(doctors.router)
 api_v1_router.include_router(appointments.router)
 api_v1_router.include_router(reception.router)
+api_v1_router.include_router(nurse.router)
 api_v1_router.include_router(doctor.router)
 api_v1_router.include_router(opd.router)
 api_v1_router.include_router(ipd.router)

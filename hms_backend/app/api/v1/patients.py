@@ -20,15 +20,65 @@ def list_patients(db: Session = Depends(get_db)):
         "Dr. Priya Nair"
     ]
     for idx, p in enumerate(patients):
-        doc_assigned = doctors_list[idx % len(doctors_list)]
+        doc_assigned = getattr(p, 'doctor', None) or doctors_list[idx % len(doctors_list)]
         result.append({
             "id": p.id,
             "Patient ID": p.patient_id or p.patient_code or f"PAT-{p.id:04d}",
+            "UHID": p.patient_id or p.patient_code or f"PAT-{p.id:04d}",
             "Name": p.full_name,
+            "full_name": p.full_name,
             "Doctor": doc_assigned,
             "Disease": p.disease or "General Consultation",
             "Pain Level": f"{p.pain_scale or 3}/10",
             "Phone": p.phone,
+            "phone": p.phone,
+            "email": p.email,
+            "gender": p.gender or "Unspecified",
+            "blood_group": p.blood_group or "O+",
+            "date_of_birth": str(p.date_of_birth) if p.date_of_birth else None,
+            "address": p.address or "",
+            "city": getattr(p, 'city', '') or "",
+            "state": getattr(p, 'state', '') or "",
+            "pincode": getattr(p, 'pincode', '') or "",
+            "emergency_contact_name": p.emergency_contact_name or "",
+            "emergency_contact_phone": p.emergency_contact_phone or "",
+            "emergency_relationship": getattr(p, 'emergency_relationship', '') or "",
+            "Registered Date": str(p.created_at.date()) if p.created_at else "2026-08-20",
+            "Status": p.status or "Active"
+        })
+    return result
+
+
+@router.get("/search")
+def search_patients(q: str = "", db: Session = Depends(get_db)):
+    if not q:
+        return list_patients(db)
+    query_str = f"%{q.strip()}%"
+    patients = db.query(Patient).filter(
+        Patient.status != "Deleted",
+        (Patient.full_name.ilike(query_str)) |
+        (Patient.phone.ilike(query_str)) |
+        (Patient.patient_id.ilike(query_str)) |
+        (Patient.patient_code.ilike(query_str))
+    ).all()
+    
+    result = []
+    for idx, p in enumerate(patients):
+        result.append({
+            "id": p.id,
+            "Patient ID": p.patient_id or p.patient_code or f"PAT-{p.id:04d}",
+            "UHID": p.patient_id or p.patient_code or f"PAT-{p.id:04d}",
+            "Name": p.full_name,
+            "full_name": p.full_name,
+            "Phone": p.phone,
+            "phone": p.phone,
+            "email": p.email,
+            "gender": p.gender or "Unspecified",
+            "blood_group": p.blood_group or "O+",
+            "date_of_birth": str(p.date_of_birth) if p.date_of_birth else None,
+            "address": p.address or "",
+            "emergency_contact_name": p.emergency_contact_name or "",
+            "emergency_contact_phone": p.emergency_contact_phone or "",
             "Registered Date": str(p.created_at.date()) if p.created_at else "2026-08-20",
             "Status": p.status or "Active"
         })
@@ -37,26 +87,41 @@ def list_patients(db: Session = Depends(get_db)):
 
 @router.post("")
 def register_patient(payload: dict, db: Session = Depends(get_db)):
-    name = payload.get("Name") or payload.get("full_name") or "New Patient"
-    phone = payload.get("Phone") or payload.get("phone") or "+91 99999 00000"
+    name = payload.get("Name") or payload.get("full_name") or payload.get("Full Name") or "New Patient"
+    phone = payload.get("Phone") or payload.get("phone") or payload.get("Mobile Number") or "+91 99999 00000"
     email = payload.get("Email") or payload.get("email")
-    pid = payload.get("Patient ID") or payload.get("patient_id") or payload.get("patient_code") or f"PAT-{2000 + db.query(Patient).count() + 1}"
-    disease = payload.get("Disease") or payload.get("disease") or "General Consultation"
-    doctor = payload.get("Doctor") or payload.get("doctor") or "Dr. Madhavan"
+    dob_str = payload.get("date_of_birth") or payload.get("Date of Birth")
+    gender = payload.get("Gender") or payload.get("gender") or "Unspecified"
+    blood_group = payload.get("Blood Group") or payload.get("blood_group") or "O+"
     
-    pain_val = payload.get("Pain Level") or payload.get("Pain Scale") or payload.get("pain_scale") or payload.get("pain")
-    pain = 3
-    if pain_val is not None:
-        import re
-        m = re.search(r'\d+', str(pain_val))
-        if m:
-            pain = int(m.group(0))
-            if pain > 10: pain = 10
-            if pain < 0: pain = 0
+    address = payload.get("Address") or payload.get("address") or ""
+    city = payload.get("City") or payload.get("city") or ""
+    state = payload.get("State") or payload.get("state") or ""
+    pincode = payload.get("Pincode") or payload.get("pincode") or ""
 
-    existing = db.query(Patient).filter((Patient.patient_id == pid) | (Patient.patient_code == pid)).first()
-    if existing:
-        pid = f"PAT-{2000 + db.query(Patient).count() + 100}"
+    dept = payload.get("Department") or payload.get("department") or "Cardiology"
+    doctor = payload.get("Doctor") or payload.get("doctor") or "Dr. Madhavan"
+    visit_type = payload.get("Visit Type") or payload.get("visit_type") or "New Consultation"
+    chief_complaint = payload.get("Chief Complaint") or payload.get("chief_complaint") or payload.get("Disease") or "Routine Checkup"
+
+    emer_name = payload.get("Contact Name") or payload.get("emergency_contact_name") or ""
+    emer_rel = payload.get("Relationship") or payload.get("emergency_relationship") or ""
+    emer_phone = payload.get("Contact Number") or payload.get("emergency_contact_phone") or ""
+
+    reg_fee = payload.get("Registration Fee") or payload.get("registration_fee") or "₹500"
+    pay_mode = payload.get("Payment Mode") or payload.get("payment_mode") or "Cash"
+    pay_status = payload.get("Payment Status") or payload.get("payment_status") or "Paid"
+
+    # Generate UHID
+    count = db.query(Patient).count() + 1
+    pid = payload.get("Patient ID") or payload.get("UHID") or f"UHID-2026-{1000 + count}"
+
+    dob = None
+    if dob_str:
+        try:
+            dob = datetime.strptime(str(dob_str), "%Y-%m-%d").date()
+        except Exception:
+            dob = None
 
     patient = Patient(
         patient_id=pid,
@@ -64,43 +129,88 @@ def register_patient(payload: dict, db: Session = Depends(get_db)):
         full_name=name,
         phone=phone,
         email=email,
-        disease=disease,
-        pain_scale=pain,
+        date_of_birth=dob,
+        gender=gender,
+        blood_group=blood_group,
+        address=address,
+        disease=chief_complaint,
+        pain_scale=3,
+        emergency_contact_name=emer_name,
+        emergency_contact_phone=emer_phone,
         status="Active"
     )
+    if hasattr(patient, 'city'): patient.city = city
+    if hasattr(patient, 'state'): patient.state = state
+    if hasattr(patient, 'pincode'): patient.pincode = pincode
+    if hasattr(patient, 'emergency_relationship'): patient.emergency_relationship = emer_rel
+
     db.add(patient)
     db.commit()
     db.refresh(patient)
 
-    # Save appointment & notification in DB for selected doctor
-    from hms_backend.app.utils.generic_crud import create_generic_record
-    from datetime import datetime
+    # Auto-generate OPD Queue Token
+    from hms_backend.app.utils.generic_crud import create_generic_record, get_generic_records
+    existing_queue = get_generic_records(db, "reception_queue")
+    token_num = f"TK-{len(existing_queue) + 1:02d}"
+    
     time_str = datetime.now().strftime("%Y-%m-%d %I:%M %p")
     
+    create_generic_record(db, "reception_queue", {
+        "Token No": token_num,
+        "Patient": name,
+        "Doctor": doctor,
+        "Est. Time": datetime.now().strftime("%I:%M %p"),
+        "Status": "Waiting"
+    })
+
+    create_generic_record(db, "reception_op_ip", {
+        "Patient Name": name,
+        "Type": "Outpatient (OP)",
+        "Department": dept,
+        "Status": "Checked In"
+    })
+
     create_generic_record(db, "doctor_appointments", {
         "Time": time_str,
         "Patient Name": name,
         "Doctor": doctor,
         "Status": "Scheduled",
-        "Notes": f"Newly registered patient ({disease})"
+        "Notes": f"{visit_type} - {chief_complaint}"
     })
     
     create_generic_record(db, "doctor_notifications", {
         "Doctor": doctor,
         "Patient": name,
-        "Message": f"🔔 New Patient Assigned: {name} registered by Receptionist and assigned to {doctor}.",
+        "Message": f"🔔 New Patient Registration ({token_num}): {name} assigned for {dept} ({chief_complaint}).",
         "Status": "Unread"
+    })
+
+    create_generic_record(db, "billing_invoices", {
+        "Invoice ID": f"INV-REG-{patient.id}",
+        "Patient": name,
+        "Total Amount": str(reg_fee),
+        "Payment Mode": pay_mode,
+        "Payment Status": pay_status,
+        "Date": time_str
     })
 
     return {
         "id": patient.id,
         "Patient ID": patient.patient_id,
+        "UHID": patient.patient_id,
         "Name": patient.full_name,
-        "Doctor": doctor,
-        "Disease": patient.disease,
-        "Pain Level": f"{patient.pain_scale}/10",
+        "full_name": patient.full_name,
         "Phone": patient.phone,
-        "Registered Date": str(patient.created_at.date()) if patient.created_at else "2026-08-13",
+        "email": patient.email,
+        "Doctor": doctor,
+        "Department": dept,
+        "Token No": token_num,
+        "Visit Type": visit_type,
+        "Chief Complaint": chief_complaint,
+        "Registration Fee": reg_fee,
+        "Payment Mode": pay_mode,
+        "Payment Status": pay_status,
+        "Registered Date": str(patient.created_at.date()) if patient.created_at else "2026-08-25",
         "Status": patient.status
     }
 

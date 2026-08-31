@@ -1,6 +1,10 @@
-from fastapi import APIRouter, Depends
+from datetime import datetime, timezone
+import asyncio
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from hms_backend.app.core.database import get_db
+from hms_backend.app.models.lab import LabOrder, LabResult
+from hms_backend.app.core.websocket import manager
 from hms_backend.app.utils.generic_crud import (
     get_generic_records, create_generic_record, delete_generic_record
 )
@@ -44,7 +48,7 @@ def delete_sample_collection(record_id: int, db: Session = Depends(get_db)):
     return delete_generic_record(db, "lab_samples", record_id)
 
 
-# 3. Report Entry
+# 3. Report Entry & Result Verification Engine
 @router.get("/report-entry")
 @router.get("/reports")
 def get_report_entries(db: Session = Depends(get_db)):
@@ -60,6 +64,64 @@ def create_report_entry(payload: dict, db: Session = Depends(get_db)):
 @router.delete("/report-entry/{record_id}")
 def delete_report_entry(record_id: int, db: Session = Depends(get_db)):
     return delete_generic_record(db, "lab_report_entries", record_id)
+
+
+@router.post("/verify-result")
+async def verify_lab_result(payload: dict, db: Session = Depends(get_db)):
+    order_id = payload.get("order_id") or payload.get("lab_order_id") or payload.get("id")
+    order_code = payload.get("order_code")
+    
+    order = None
+    if order_id:
+        order = db.query(LabOrder).filter(LabOrder.id == order_id).first()
+    elif order_code:
+        order = db.query(LabOrder).filter(LabOrder.order_code == order_code).first()
+
+    result_summary = payload.get("result_data") or "Hemoglobin: 12.8 g/dL, WBC: 8,200 /µL, Platelets: 245,000 /µL (Normal)"
+    is_abnormal = payload.get("is_abnormal") or False
+    doc_id = (order.ordering_doctor_id if order else None) or payload.get("ordering_doctor_id") or 1
+
+    if order:
+        order.status = "VERIFIED"
+        order.sample_status = "RESULT_READY"
+
+    lab_res = LabResult(
+        lab_order_id=order.id if order else 1,
+        encounter_id=order.encounter_id if order else "ENC-2026-101",
+        patient_id=order.patient_id if order else 1,
+        test_name=order.test_name if order else "CBC Test",
+        result_data=result_summary,
+        is_abnormal=is_abnormal,
+        status="VERIFIED",
+        verified_by=payload.get("verified_by") or "Anil Mehta (Lab Tech)",
+        resulted_at=datetime.now(timezone.utc),
+        verified_at=datetime.now(timezone.utc)
+    )
+    db.add(lab_res)
+    db.commit()
+    db.refresh(lab_res)
+
+    event_payload = {
+        "lab_result_id": lab_res.id,
+        "lab_order_id": order.id if order else 1,
+        "order_code": order.order_code if order else "LAB-2026-001",
+        "encounter_id": order.encounter_id if order else "ENC-2026-101",
+        "patient_id": order.patient_id if order else 1,
+        "ordering_doctor_id": doc_id,
+        "test_name": order.test_name if order else "CBC Test",
+        "result_summary": result_summary,
+        "is_abnormal": is_abnormal,
+        "status": "VERIFIED"
+    }
+
+    # Targeted Event Dispatcher: ROUTE ONLY TO ASSIGNED ORDERING DOCTOR!
+    await manager.send_to_doctor(doc_id, "LabResultVerified", event_payload)
+
+    return {
+        "status": "success",
+        "message": f"Lab result verified and auto-routed to Ordering Doctor (Doctor ID: {doc_id}).",
+        "result_id": lab_res.id
+    }
 
 
 # 4. Report Upload

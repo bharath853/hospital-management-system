@@ -23,6 +23,12 @@ import hms_backend.app.models.billing
 import hms_backend.app.models.ambulance
 import hms_backend.app.models.audit
 import hms_backend.app.models.generic
+import hms_backend.app.models.queue
+import hms_backend.app.models.encounter
+import hms_backend.app.models.imaging
+import json
+
+from hms_backend.app.core.websocket import manager, WebSocket, WebSocketDisconnect
 
 # Ensure all tables are created in SQLite database
 Base.metadata.create_all(bind=engine)
@@ -87,5 +93,27 @@ def health_check():
 @app.post("/api/auth/login")
 def legacy_login():
     return {"token": "demo-token", "role": "admin", "name": "Demo Admin"}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, channel: str = None):
+    await manager.connect(websocket, channel=channel)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                msg = json.loads(data)
+                if msg.get("action") == "subscribe" and msg.get("channel"):
+                    manager.subscribe(websocket, msg["channel"])
+                    await websocket.send_text(f'{{"event": "SUBSCRIBED", "channel": "{msg["channel"]}"}}')
+                else:
+                    await websocket.send_text(f'{{"event": "PONG", "data": "{data}"}}')
+            except Exception:
+                await websocket.send_text(f'{{"event": "PONG", "data": "{data}"}}')
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        manager.disconnect(websocket)
+
 
 

@@ -10,7 +10,7 @@ from hms_backend.app.models.ipd import Ward, Bed, Admission
 from hms_backend.app.models.prescription import Prescription
 from hms_backend.app.models.lab import TestRequest, LabReport
 from hms_backend.app.models.pharmacy import Medicine, StockTransaction
-from hms_backend.app.models.billing import Invoice, Payment
+from hms_backend.app.models.billing import Invoice, Payment, ServiceMaster
 from hms_backend.app.models.ambulance import Ambulance, EmergencyBooking
 from hms_backend.app.core.security import hash_password
 
@@ -144,20 +144,38 @@ def seed_database(db: Session):
 
     # 8. IPD (Wards, Beds, Admissions)
     if db.query(Ward).count() == 0:
-        ward1 = Ward(name="ICU Block A", ward_type="Intensive Care Unit", total_beds=10, occupied_beds=2, nurse_in_charge="Selvi. V. Mary")
-        ward2 = Ward(name="Deluxe Private Wing", ward_type="Deluxe Private", total_beds=8, occupied_beds=1, nurse_in_charge="Selvi. V. Mary")
-        db.add_all([ward1, ward2])
+        w1 = Ward(name="General Medicine Ward", ward_type="General", total_beds=10, occupied_beds=1, nurse_in_charge="Selvi. V. Mary")
+        w2 = Ward(name="Cardiology Deluxe Wing", ward_type="Deluxe Private", total_beds=8, occupied_beds=1, nurse_in_charge="Kavitha. R.")
+        w3 = Ward(name="Intensive Care Unit (ICU)", ward_type="ICU", total_beds=6, occupied_beds=1, nurse_in_charge="Lakshmi. P")
+        w4 = Ward(name="Orthopedics & Surgery Ward", ward_type="Semiprivate", total_beds=8, occupied_beds=0, nurse_in_charge="Anandhi. K")
+        db.add_all([w1, w2, w3, w4])
         db.commit()
 
-        b1 = Bed(bed_number="Bed ICU-01", ward_id=ward1.id, status="Occupied")
-        b2 = Bed(bed_number="Bed ICU-02", ward_id=ward1.id, status="Available")
-        b3 = Bed(bed_number="Room 101", ward_id=ward2.id, status="Occupied")
-        db.add_all([b1, b2, b3])
+        # General Medicine Beds
+        b1 = Bed(bed_number="Bed 01", room_number="Room 201", ward_id=w1.id, bed_type="General", daily_rate="₹1,500/day", status="Available")
+        b2 = Bed(bed_number="Bed 02", room_number="Room 201", ward_id=w1.id, bed_type="General", daily_rate="₹1,500/day", status="Occupied")
+        b3 = Bed(bed_number="Bed 03", room_number="Room 201", ward_id=w1.id, bed_type="General", daily_rate="₹1,500/day", status="Available")
+        b4 = Bed(bed_number="Bed 04", room_number="Room 202", ward_id=w1.id, bed_type="General", daily_rate="₹1,500/day", status="Available")
+
+        # Cardiology Deluxe Beds
+        b5 = Bed(bed_number="Bed C1", room_number="Room 301", ward_id=w2.id, bed_type="Deluxe", daily_rate="₹5,000/day", status="Available")
+        b6 = Bed(bed_number="Bed C2", room_number="Room 301", ward_id=w2.id, bed_type="Deluxe", daily_rate="₹5,000/day", status="Occupied")
+        b7 = Bed(bed_number="Bed C3", room_number="Room 302", ward_id=w2.id, bed_type="Deluxe", daily_rate="₹5,000/day", status="Available")
+
+        # ICU Beds
+        b8 = Bed(bed_number="Bed ICU-01", room_number="Room ICU-1", ward_id=w3.id, bed_type="ICU", daily_rate="₹8,500/day", status="Occupied")
+        b9 = Bed(bed_number="Bed ICU-02", room_number="Room ICU-1", ward_id=w3.id, bed_type="ICU", daily_rate="₹8,500/day", status="Available")
+
+        # Surgery Beds
+        b10 = Bed(bed_number="Bed S01", room_number="Room 401", ward_id=w4.id, bed_type="Semiprivate", daily_rate="₹3,000/day", status="Available")
+        b11 = Bed(bed_number="Bed S02", room_number="Room 401", ward_id=w4.id, bed_type="Semiprivate", daily_rate="₹3,000/day", status="Available")
+
+        db.add_all([b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11])
         db.commit()
 
         p1 = db.query(Patient).filter(Patient.full_name == "Tanvi").first()
         if p1:
-            adm = Admission(admission_code="IPD-301", patient_id=p1.id, bed_id=b3.id, attending_doctor="Dr. Raj Kanna", status="Admitted")
+            adm = Admission(admission_code="IPD-301", patient_id=p1.id, bed_id=b2.id, attending_doctor="Dr. Raj Kanna", status="Admitted")
             db.add(adm)
             db.commit()
 
@@ -220,3 +238,25 @@ def seed_database(db: Session):
         bk = EmergencyBooking(patient_name="Emergency Call #901", pickup_location="MG Road Crossing", ambulance_vehicle="AMB-102", status="Dispatched")
         db.add(bk)
         db.commit()
+
+    # 14. Service Master (Hospital Pricing Catalog)
+    if db.query(ServiceMaster).count() == 0:
+        services = [
+            ServiceMaster(service_code="CONS-001", service_name="Specialist Consultation", category="Consultation", op_rate=500.0, ip_rate=500.0, unit="Per Visit", tax_rate=0.0),
+            ServiceMaster(service_code="CONS-002", service_name="Follow-up Consultation", category="Consultation", op_rate=300.0, ip_rate=300.0, unit="Per Visit", tax_rate=0.0),
+            ServiceMaster(service_code="CONS-003", service_name="Emergency Consultation", category="Consultation", op_rate=750.0, ip_rate=750.0, unit="Per Visit", tax_rate=0.0),
+            ServiceMaster(service_code="BED-001", service_name="General Ward Bed", category="Bed", op_rate=1500.0, ip_rate=1500.0, unit="Per Day", tax_rate=0.0),
+            ServiceMaster(service_code="BED-002", service_name="Cardiology Deluxe Room", category="Bed", op_rate=5000.0, ip_rate=5000.0, unit="Per Day", tax_rate=0.0),
+            ServiceMaster(service_code="BED-003", service_name="ICU Bed", category="Bed", op_rate=8500.0, ip_rate=8500.0, unit="Per Day", tax_rate=0.0),
+            ServiceMaster(service_code="NURS-001", service_name="Nursing Service & Care", category="Nursing", op_rate=500.0, ip_rate=500.0, unit="Per Day", tax_rate=0.0),
+            ServiceMaster(service_code="LAB-001", service_name="CBC Blood Profile", category="Laboratory", op_rate=250.0, ip_rate=250.0, unit="Per Test", tax_rate=0.0),
+            ServiceMaster(service_code="LAB-002", service_name="Blood Sugar Fasting", category="Laboratory", op_rate=100.0, ip_rate=100.0, unit="Per Test", tax_rate=0.0),
+            ServiceMaster(service_code="LAB-003", service_name="Lipid Profile", category="Laboratory", op_rate=450.0, ip_rate=450.0, unit="Per Test", tax_rate=0.0),
+            ServiceMaster(service_code="IMG-001", service_name="Chest X-Ray", category="Imaging", op_rate=400.0, ip_rate=400.0, unit="Per Scan", tax_rate=0.0),
+            ServiceMaster(service_code="IMG-002", service_name="Knee MRI Scan", category="Imaging", op_rate=2500.0, ip_rate=2500.0, unit="Per Scan", tax_rate=0.0),
+            ServiceMaster(service_code="PROC-001", service_name="ECG Test", category="Procedure", op_rate=300.0, ip_rate=300.0, unit="Per Test", tax_rate=0.0),
+            ServiceMaster(service_code="PROC-002", service_name="Wound Dressing & Care", category="Procedure", op_rate=200.0, ip_rate=200.0, unit="Per Proc", tax_rate=0.0),
+        ]
+        db.add_all(services)
+        db.commit()
+
