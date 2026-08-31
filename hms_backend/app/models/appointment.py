@@ -28,6 +28,7 @@ class Appointment(Base):
     payment_mode = Column(String(50), default="Cash")
     
     status = Column(String(50), default="Scheduled")
+    queue_number = Column(Integer, nullable=True)
     appointment_status = Column(String(50), default="Scheduled")
     reminder_status = Column(String(50), default="Yes")
     reception_notes = Column(Text, nullable=True)

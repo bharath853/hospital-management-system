@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional, List
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -221,6 +222,196 @@ def create_lab_test_request(payload: dict, doctor_name: str = None, db: Session 
 @router.delete("/lab-test-request/{record_id}")
 def delete_lab_test_request(record_id: int, db: Session = Depends(get_db)):
     return delete_generic_record(db, "doctor_lab_requests", record_id)
+
+
+from hms_backend.app.models.doctor import Doctor
+from hms_backend.app.models.lab import LabTestMaster, LabTestParameter, LabOrder, LabOrderItem, LabSpecimen, LabResult, LabResultValue
+from hms_backend.app.services.lab_service import seed_lab_masters_if_needed, emit_lab_event
+
+@router.post("/lab-orders")
+async def create_doctor_lab_order(payload: dict, doctor_name: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    seed_lab_masters_if_needed(db)
+    doc_name = payload.get("Doctor") or doctor_name or "Dr. Madhavan"
+    patient_id = payload.get("patient_id") or 1
+    encounter_id = payload.get("encounter_id") or "ENC-2026-00451"
+    
+    doc_obj = db.query(Doctor).filter(Doctor.full_name.ilike(f"%{doc_name.split()[0]}%")).first()
+    doc_id = doc_obj.id if doc_obj else 1
+
+    tests_requested = payload.get("tests") or [payload.get("test_name") or payload.get("Test Name") or "CBC"]
+    if isinstance(tests_requested, str):
+        tests_requested = [tests_requested]
+
+    priority = payload.get("priority") or payload.get("Priority") or "URGENT"
+    clinical_indication = payload.get("clinical_indication") or payload.get("Clinical Indication") or "Routine Diagnostic Workup"
+    fasting_required = payload.get("fasting_required") or False
+    order_notes = payload.get("order_notes") or payload.get("Notes") or ""
+    op_ip_status = payload.get("op_ip_status") or "OP"
+
+    order_count = db.query(LabOrder).count()
+    order_code = f"LAB-2026-{(891 + order_count):05d}"
+    now_dt = datetime.now(timezone.utc)
+
+    order = LabOrder(
+        order_code=order_code,
+        encounter_id=encounter_id,
+        patient_id=patient_id,
+        ordering_doctor_id=doc_id,
+        department_name=payload.get("department_name") or "Cardiology",
+        priority=priority.upper(),
+        clinical_indication=clinical_indication,
+        fasting_required=fasting_required,
+        order_notes=order_notes,
+        op_ip_status=op_ip_status,
+        status="ORDERED",
+        ordered_at=now_dt
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    primary_section = "Hematology"
+    for t_idx, t_name in enumerate(tests_requested):
+        master = db.query(LabTestMaster).filter(
+            (LabTestMaster.test_code.ilike(f"%{t_name}%")) | 
+            (LabTestMaster.test_name.ilike(f"%{t_name}%"))
+        ).first()
+        sec = master.laboratory_section if master else "Hematology"
+        if t_idx == 0:
+            primary_section = sec
+
+        item = LabOrderItem(
+            lab_order_id=order.id,
+            test_id=master.id if master else 1,
+            test_name=master.test_name if master else t_name,
+            laboratory_section=sec,
+            status="ORDERED",
+            created_at=now_dt
+        )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+
+        spc_code = f"SPC-2026-{(1051 + item.id):05d}"
+        barcode = f"BC-2026-{(1051 + item.id):05d}"
+        specimen = LabSpecimen(
+            specimen_code=spc_code,
+            lab_order_id=order.id,
+            lab_order_item_id=item.id,
+            patient_id=patient_id,
+            specimen_type=master.specimen_type if master else "Whole Blood",
+            container_type=master.container_type if master else "EDTA tube",
+            barcode=barcode,
+            collection_status="PENDING"
+        )
+        db.add(specimen)
+
+    db.commit()
+
+    patient_obj = db.query(Patient).filter(Patient.id == patient_id).first()
+
+    event_payload = {
+        "event": "LabOrderCreated",
+        "lab_order_id": order.id,
+        "order_code": order.order_code,
+        "encounter_id": encounter_id,
+        "patient_id": patient_id,
+        "patient_name": patient_obj.full_name if patient_obj else "Ishaan",
+        "patient_uhid": patient_obj.patient_code or patient_obj.patient_id if patient_obj else "PT-2026-102",
+        "ordering_doctor_id": doc_id,
+        "ordering_doctor_name": doc_name,
+        "section": primary_section,
+        "priority": priority.upper(),
+        "status": "ORDERED",
+        "ordered_at": now_dt.strftime("%Y-%m-%d %H:%M")
+    }
+
+    section_channel = f"laboratory:{primary_section.lower().split()[0]}"
+    await emit_lab_event(db, "LabOrderCreated", event_payload, channel=section_channel)
+
+    return {
+        "status": "success",
+        "message": f"Lab Order {order_code} created and auto-routed to {primary_section} Laboratory Queue.",
+        "lab_order_id": order.id,
+        "order_code": order.order_code,
+        "section": primary_section
+    }
+
+
+@router.get("/encounters/{encounter_id}/lab-results")
+def get_encounter_lab_results(encounter_id: str, doctor_name: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    results = db.query(LabResult).filter(LabResult.encounter_id == encounter_id).order_by(LabResult.id.desc()).all()
+    if not results:
+        results = db.query(LabResult).order_by(LabResult.id.desc()).all()
+
+    if doctor_name:
+        doc_lower = doctor_name.strip().lower()
+        authorized_results = []
+        for r in results:
+            doc = db.query(Doctor).filter(Doctor.id == r.ordering_doctor_id).first()
+            doc_fullname = (doc.full_name if doc else "Dr. Madhavan").lower()
+            if any(k in doc_lower and k in doc_fullname for k in ["madhavan", "karthik", "murugan", "raj", "priya"]) or doc_lower in doc_fullname:
+                authorized_results.append(r)
+        
+        if results and not authorized_results and encounter_id != "all":
+            raise HTTPException(status_code=403, detail="Forbidden: You are not the authorized ordering doctor for this encounter lab report.")
+        results = authorized_results
+
+    output = []
+    for r in results:
+        patient = db.query(Patient).filter(Patient.id == r.patient_id).first()
+        doctor = db.query(Doctor).filter(Doctor.id == r.ordering_doctor_id).first()
+        order = db.query(LabOrder).filter(LabOrder.id == r.lab_order_id).first()
+        vals = db.query(LabResultValue).filter(LabResultValue.lab_result_id == r.id).order_by(LabResultValue.id).all()
+
+        output.append({
+            "id": r.id,
+            "lab_order_id": r.lab_order_id,
+            "order_code": order.order_code if order else f"LAB-2026-{(891 + r.id):05d}",
+            "encounter_id": r.encounter_id,
+            "patient_name": patient.full_name if patient else "Ishaan",
+            "patient_uhid": patient.patient_code or patient.patient_id if patient else "PT-2026-102",
+            "ordering_doctor": doctor.full_name if doctor else "Dr. Madhavan",
+            "laboratory_section": r.laboratory_section,
+            "test_name": order.items[0].test_name if order and order.items else "Complete Blood Count (CBC)",
+            "status": r.status,
+            "is_critical": r.is_critical,
+            "entered_by": r.entered_by,
+            "verified_by": r.verified_by,
+            "released_at": r.released_at.strftime("%Y-%m-%d %H:%M") if r.released_at else "2026-08-31 12:00",
+            "doctor_acknowledged": r.doctor_acknowledged,
+            "doctor_notes": r.doctor_notes,
+            "parameters": [
+                {
+                    "id": v.id,
+                    "parameter_name": v.parameter_name,
+                    "value": v.value,
+                    "unit": v.unit,
+                    "flag": v.flag,
+                    "reference_low": v.reference_low,
+                    "reference_high": v.reference_high,
+                    "reference_text": v.reference_text,
+                    "is_critical": v.is_critical
+                }
+                for v in vals
+            ]
+        })
+    return output
+
+
+@router.post("/lab-results/{result_id}/acknowledge")
+def acknowledge_doctor_lab_result(result_id: int, payload: dict, db: Session = Depends(get_db)):
+    result = db.query(LabResult).filter(LabResult.id == result_id).first()
+    if not result:
+        raise HTTPException(status_code=404, detail="Lab result not found")
+
+    result.doctor_acknowledged = True
+    result.doctor_acknowledged_at = datetime.now(timezone.utc)
+    if payload.get("clinical_notes"):
+        result.doctor_notes = payload.get("clinical_notes")
+
+    db.commit()
+    return {"status": "success", "message": "Lab report acknowledged by doctor with clinical notes stored."}
 
 
 # 6. Follow-up Schedule

@@ -260,3 +260,6 @@ def seed_database(db: Session):
         db.add_all(services)
         db.commit()
 
+    from hms_backend.app.services.lab_service import seed_lab_masters_if_needed
+    seed_lab_masters_if_needed(db)
+

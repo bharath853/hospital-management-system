@@ -30,13 +30,20 @@ import json
 
 from hms_backend.app.core.websocket import manager, WebSocket, WebSocketDisconnect
 
+from hms_backend.app.services.lab_service import seed_lab_masters_if_needed
+
 # Ensure all tables are created in SQLite database
 Base.metadata.create_all(bind=engine)
+db_init = SessionLocal()
+try:
+    seed_database(db_init)
+    seed_lab_masters_if_needed(db_init)
+finally:
+    db_init.close()
 
 from hms_backend.app.routers import (
     admin, reception, doctor, nurse, laboratory, pharmacy, inpatient, billing, portal
 )
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,6 +51,7 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_database(db)
+        seed_lab_masters_if_needed(db)
     finally:
         db.close()
     yield

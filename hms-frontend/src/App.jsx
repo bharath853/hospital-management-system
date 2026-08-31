@@ -5127,15 +5127,16 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue' }) => {
 
   const handleOrderLab = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/doctor/orders/lab', {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/doctor/lab-orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          Doctor: 'Dr. Madhavan',
           patient_id: selectedPatientId,
-          encounter_code: selectedEncounterCode,
-          ordering_doctor_id: 1,
-          test_name: labTestName,
-          priority: labPriority
+          encounter_id: selectedEncounterCode,
+          tests: [labTestName],
+          priority: labPriority,
+          clinical_indication: chiefComplaint || 'Routine Clinical Diagnostic Workup'
         })
       });
       if (res.ok) {
@@ -7487,70 +7488,6 @@ const ConsultationCharges = () => {
     </div>
   );
 };
-
-const LabCharges = () => <GenericPage title="Lab Charges" description="Manage diagnostic charges." cols={['Patient', 'Test Name', 'Amount', 'Status']} apiEndpoint="/api/v1/billing/lab-charges" isBilling={true} defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Test Name': 'CBC Blood Profile', Amount: '$35.00', Status: 'Paid' }]} />;
-const PharmacyCharges = () => <GenericPage title="Pharmacy Charges" description="Medicine charges." cols={['Patient', 'Bill ID', 'Amount', 'Date', 'Status']} apiEndpoint="/api/v1/billing/pharmacy-charges" isBilling={true} defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Bill ID': 'PH-901', Amount: '$24.50', Date: '2026-08-13 11:00 AM', Status: 'Paid' }]} />;
-const RoomCharges = () => <GenericPage title="Room Charges" description="IPD room and bed charges." cols={['Patient', 'Days Stayed', 'Total Amount', 'Status']} apiEndpoint="/api/v1/billing/room-charges" isBilling={true} defaultData={[{ id: 1, Patient: 'Siddharth Roy', 'Days Stayed': '2 Days', 'Total Amount': '$400.00', Status: 'Pending' }]} />;
-const PaymentGateway = () => <GenericPage title="Payment Gateway" description="Online transaction logs." cols={['Transaction ID', 'Patient', 'Amount', 'Method', 'Status']} apiEndpoint="/api/v1/billing/payment-gateway" isBilling={true} defaultData={[{ id: 1, 'Transaction ID': 'TXN-9901', Patient: 'Aarav Kumar', Amount: '$109.50', Method: 'Credit Card', Status: 'Completed' }]} />;
-const InvoiceGeneration = () => <GenericPage title="Invoice Generation" description="Generate consolidated invoices." cols={['Invoice ID', 'Patient', 'Total Amount', 'Due Date', 'Status']} apiEndpoint="/api/v1/billing/invoices" isBilling={true} defaultData={[{ id: 1, 'Invoice ID': 'INV-2026-01', Patient: 'Aarav Kumar', 'Total Amount': '$109.50', 'Due Date': '2026-08-13 17:00 PM', Status: 'Paid' }]} />;
-=======
-const ConsultationCharges = () => <GenericPage title="Consultation Charges" description="Manage OP consultation fees breakdown." cols={['Patient', 'Doctor', 'Amount', 'Date', 'Status']} apiEndpoint="/api/v1/billing/consultation-charges" defaultData={[{ id: 1, Patient: 'Aarav Kumar', Doctor: 'Dr. Madhavan', Amount: '$50.00', Date: '2026-08-20 10:30 AM', Status: 'Paid' }]} />;
-const LabCharges = () => <GenericPage title="Lab Charges" description="Manage diagnostic charges breakdown." cols={['Patient', 'Test Name', 'Amount', 'Status']} apiEndpoint="/api/v1/billing/lab-charges" defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Test Name': 'CBC Blood Profile', Amount: '$35.00', Status: 'Paid' }]} />;
-const PharmacyCharges = () => <GenericPage title="Pharmacy Charges" description="Medicine charges breakdown." cols={['Patient', 'Bill ID', 'Amount', 'Date', 'Status']} apiEndpoint="/api/v1/billing/pharmacy-charges" defaultData={[{ id: 1, Patient: 'Aarav Kumar', 'Bill ID': 'PH-901', Amount: '$24.50', Date: '2026-08-20 11:00 AM', Status: 'Paid' }]} />;
-const RoomCharges = () => <GenericPage title="Room Charges" description="IPD room and bed charges breakdown." cols={['Patient', 'Days Stayed', 'Total Amount', 'Status']} apiEndpoint="/api/v1/billing/room-charges" defaultData={[{ id: 1, Patient: 'Siddharth Roy', 'Days Stayed': '2 Days', 'Total Amount': '$400.00', Status: 'Pending' }]} />;
-const PaymentGateway = () => <GenericPage title="Payment Gateway" description="Online transaction logs." cols={['Transaction ID', 'Patient', 'Amount', 'Method', 'Status']} apiEndpoint="/api/v1/billing/payment-gateway" defaultData={[{ id: 1, 'Transaction ID': 'TXN-9901', Patient: 'Aarav Kumar', Amount: '$109.50', Method: 'Credit Card', Status: 'Completed' }]} />;
-const InvoiceGeneration = () => <GenericPage 
-  title="Invoice Generation" 
-  description="Consolidated patient tax invoice generation with instant Print and PDF receipts." 
-  cols={['Invoice ID', 'Name', 'Consultation Charge', 'Lab Charge', 'Pharmacy Charge', 'Total', 'Status', 'Payment Mode', 'Date']} 
-  apiEndpoint="/api/v1/billing/invoices" 
-  isBilling={true} 
-  defaultData={[
-    { 
-      id: 1, 
-      'Invoice ID': 'INV-2026-01', 
-      Name: 'Aarav Kumar', 
-      Patient: 'Aarav Kumar', 
-      'Consultation Charge': '$50.00', 
-      'Lab Charge': '$35.00', 
-      'Pharmacy Charge': '$24.50', 
-      Total: '$109.50', 
-      'Total Amount': '$109.50', 
-      Date: '2026-08-20 11:30 AM', 
-      Status: 'Paid',
-      'Payment Mode': 'UPI / Online Desk'
-    },
-    { 
-      id: 2, 
-      'Invoice ID': 'INV-2026-02', 
-      Name: 'Rajesh Patel', 
-      Patient: 'Rajesh Patel', 
-      'Consultation Charge': '$60.00', 
-      'Lab Charge': '$85.00', 
-      'Pharmacy Charge': '$35.00', 
-      Total: '$180.00', 
-      'Total Amount': '$180.00', 
-      Date: '2026-08-20 12:45 PM', 
-      Status: 'Paid',
-      'Payment Mode': 'Credit Card'
-    },
-    { 
-      id: 3, 
-      'Invoice ID': 'INV-2026-03', 
-      Name: 'Siddharth Roy', 
-      Patient: 'Siddharth Roy', 
-      'Consultation Charge': '$75.00', 
-      'Lab Charge': '$120.00', 
-      'Pharmacy Charge': '$65.00', 
-      Total: '$260.00', 
-      'Total Amount': '$260.00', 
-      Date: '2026-08-20 02:15 PM', 
-      Status: 'Pending',
-      'Payment Mode': 'Cash Desk'
-    }
-  ]} 
-/>;
->>>>>>> a81180db7120820a132c7127c10becce0a4c0061
 
 // 9. Patient Portal
 const PortalLogin = () => <GenericPage title="Portal Login Settings" description="Manage portal access." cols={['Patient User', 'Last Login', 'Account Status']} apiEndpoint="/api/v1/portal/login-settings" defaultData={[{ id: 1, 'Patient User': 'aarav.kumar@email.com', 'Last Login': 'Today 09:15 AM', 'Account Status': 'Active' }]} />;
