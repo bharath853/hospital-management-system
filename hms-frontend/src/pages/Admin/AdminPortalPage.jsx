@@ -7,7 +7,7 @@ import {
   AlertTriangle, RefreshCw, Plus, Search, Filter, Lock, Check, X, ArrowUpRight, Eye, Edit
 } from 'lucide-react';
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1/admin';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || `${API_BASE}`;
 
 export default function AdminPortalPage() {
   const location = useLocation();

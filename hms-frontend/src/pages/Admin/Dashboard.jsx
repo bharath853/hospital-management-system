@@ -38,7 +38,7 @@ import {
   Legend
 } from 'recharts';
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1/admin';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || `${API_BASE}`;
 
 // --- INLINE CLINICAL VECTOR ILLUSTRATIONS (ZERO EXTERNAL DEPENDENCIES) ---
 

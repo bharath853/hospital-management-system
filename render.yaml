@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: hms-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn hms_backend.app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        value: sqlite:///./hms.db  # Note: Ephemeral on free tier, upgrade to Render PostgreSQL for persistent data.
+
+  - type: web
+    name: hms-frontend
+    env: static
+    buildCommand: cd hms-frontend && npm install && npm run build
+    staticPublishPath: hms-frontend/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: hms-backend
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

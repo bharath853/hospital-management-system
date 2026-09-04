@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import LabSectionBar, { LAB_SECTIONS_CONFIG } from '../../components/Laboratory/LabSectionBar';
 
-const API_BASE = 'http://127.0.0.1:8000/api/v1/laboratory';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || `${API_BASE}`;
 
 export default function LabSectionsPage() {
   const [selectedSection, setSelectedSection] = useState(() => {

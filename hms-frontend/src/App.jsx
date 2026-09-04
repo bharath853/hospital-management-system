@@ -12,6 +12,8 @@ import LabSectionsPage from './pages/Laboratory/LabSectionsPage';
 import LabSectionBar from './components/Laboratory/LabSectionBar';
 import LabPageLayout from './components/Laboratory/LabPageLayout';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || `${API_BASE}`;
+
 const DOCTOR_OPTIONS = [
   'Dr. Madhavan',
   'Dr. S. Karthikeyan',
@@ -1897,7 +1899,7 @@ const PatientRegistration = () => {
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/patients');
+      const res = await fetch(`${API_BASE}/api/v1/patients`);
       if (res.ok) {
         const data = await res.json();
         setPatients(data);
@@ -1952,7 +1954,7 @@ const PatientRegistration = () => {
 
     try {
       setSubmitting(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/patients', {
+      const res = await fetch(`${API_BASE}/api/v1/patients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submissionData)
@@ -2018,7 +2020,7 @@ const PatientRegistration = () => {
         phone: selectedPatient.Phone || selectedPatient.phone
       };
       
-      const res = await fetch('http://127.0.0.1:8000/api/v1/patients', {
+      const res = await fetch(`${API_BASE}/api/v1/patients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -2914,7 +2916,7 @@ const AppointmentBooking = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/appointments');
+      const res = await fetch(`${API_BASE}/api/v1/appointments`);
       if (res.ok) {
         const data = await res.json();
         setAppointments(data);
@@ -2928,7 +2930,7 @@ const AppointmentBooking = () => {
 
   const fetchPatients = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/patients');
+      const res = await fetch(`${API_BASE}/api/v1/patients`);
       if (res.ok) {
         const data = await res.json();
         setPatients(data);
@@ -2942,7 +2944,7 @@ const AppointmentBooking = () => {
     if (!docName || !dateStr) return;
     try {
       setLoadingSlots(true);
-      const url = `http://127.0.0.1:8000/api/v1/appointments/available-slots?doctor=${encodeURIComponent(docName)}&date=${encodeURIComponent(dateStr)}`;
+      const url = `${API_BASE}/api/v1/appointments/available-slots?doctor=${encodeURIComponent(docName)}&date=${encodeURIComponent(dateStr)}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -3046,7 +3048,7 @@ const AppointmentBooking = () => {
         "Reception Notes": receptionNotes
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/appointments', {
+      const res = await fetch(`${API_BASE}/api/v1/appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -3089,7 +3091,7 @@ const AppointmentBooking = () => {
 
   const handleUpdateStatus = async (apptId, newStatus) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/appointments/${apptId}/status`, {
+      const res = await fetch(`${API_BASE}/api/v1/appointments/${apptId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -3652,7 +3654,7 @@ const QueueManagement = () => {
   const fetchQueue = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/reception/queue');
+      const res = await fetch(`${API_BASE}/api/v1/reception/queue`);
       if (res.ok) {
         const data = await res.json();
         if (data.queue) {
@@ -3672,8 +3674,8 @@ const QueueManagement = () => {
   const fetchMetadata = async () => {
     try {
       const [aptRes, ptRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/v1/appointments'),
-        fetch('http://127.0.0.1:8000/api/v1/patients')
+        fetch(`${API_BASE}/api/v1/appointments`),
+        fetch(`${API_BASE}/api/v1/patients`)
       ]);
       if (aptRes.ok) setAppointmentsList(await aptRes.json());
       if (ptRes.ok) setPatientsList(await ptRes.json());
@@ -3767,7 +3769,7 @@ const QueueManagement = () => {
         "Consultation Room": consultationRoom
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/reception/queue/check-in', {
+      const res = await fetch(`${API_BASE}/api/v1/reception/queue/check-in`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -3808,7 +3810,7 @@ const QueueManagement = () => {
 
   const handleUpdateQueueStatus = async (queueId, newStatus) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/reception/queue/${queueId}/status`, {
+      const res = await fetch(`${API_BASE}/api/v1/reception/queue/${queueId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -4261,7 +4263,7 @@ const OPIPRegistration = () => {
 
   const fetchOPVisits = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/reception/op-visits');
+      const res = await fetch(`${API_BASE}/api/v1/reception/op-visits`);
       if (res.ok) setOpVisitsList(await res.json());
     } catch (e) {
       console.error(e);
@@ -4270,7 +4272,7 @@ const OPIPRegistration = () => {
 
   const fetchIPAdmissions = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/reception/ip-admissions');
+      const res = await fetch(`${API_BASE}/api/v1/reception/ip-admissions`);
       if (res.ok) setIpAdmissionsList(await res.json());
     } catch (e) {
       console.error(e);
@@ -4279,7 +4281,7 @@ const OPIPRegistration = () => {
 
   const fetchBedMatrix = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/reception/bed-matrix');
+      const res = await fetch(`${API_BASE}/api/v1/reception/bed-matrix`);
       if (res.ok) {
         const matrix = await res.json();
         setBedMatrix(matrix);
@@ -4294,7 +4296,7 @@ const OPIPRegistration = () => {
 
   const fetchPatients = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/patients');
+      const res = await fetch(`${API_BASE}/api/v1/patients`);
       if (res.ok) setPatientsList(await res.json());
     } catch (e) {
       console.error(e);
@@ -4352,7 +4354,7 @@ const OPIPRegistration = () => {
         "Payment Status": opPaymentStatus
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/reception/op-visits', {
+      const res = await fetch(`${API_BASE}/api/v1/reception/op-visits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -4400,7 +4402,7 @@ const OPIPRegistration = () => {
         "Payment Status": ipPaymentStatus
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/reception/ip-admissions', {
+      const res = await fetch(`${API_BASE}/api/v1/reception/ip-admissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -4424,7 +4426,7 @@ const OPIPRegistration = () => {
   const handleDischargePatient = async (admissionId) => {
     if (!window.confirm("Confirm discharge for this patient and release allocated bed?")) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/reception/ip-admissions/${admissionId}/discharge`, {
+      const res = await fetch(`${API_BASE}/api/v1/reception/ip-admissions/${admissionId}/discharge`, {
         method: 'PATCH'
       });
       if (res.ok) {
@@ -5178,8 +5180,8 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
     try {
       setLoading(true);
       const [resQ, resC] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/api/v1/doctor/me/queue?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`),
-        fetch(`http://127.0.0.1:8000/api/v1/doctor/dashboard-counters?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`)
+        fetch(`${API_BASE}/api/v1/doctor/me/queue?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`),
+        fetch(`${API_BASE}/api/v1/doctor/dashboard-counters?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`)
       ]);
 
       if (resQ.ok) {
@@ -5210,8 +5212,8 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
     if (!encCode) return;
     try {
       const [resEnc, resLab] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/api/v1/doctor/encounters/${encCode}?doctor_id=${doctorId}`),
-        fetch(`http://127.0.0.1:8000/api/v1/doctor/encounters/${encCode}/lab-results?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`)
+        fetch(`${API_BASE}/api/v1/doctor/encounters/${encCode}?doctor_id=${doctorId}`),
+        fetch(`${API_BASE}/api/v1/doctor/encounters/${encCode}/lab-results?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`)
       ]);
 
       if (resEnc.ok) {
@@ -5259,7 +5261,7 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
   const fetchAllLabReports = useCallback(async () => {
     try {
       setLoadingReports(true);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/doctor/encounters/all/lab-results?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`);
+      const res = await fetch(`${API_BASE}/api/v1/doctor/encounters/all/lab-results?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`);
       if (res.ok) {
         const data = await res.json();
         const results = Array.isArray(data) ? data : data.results || [];
@@ -5346,7 +5348,7 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
   const handleStartConsultation = async () => {
     if (!selectedEncounterCode) return;
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/doctor/consultation/start', {
+      const res = await fetch(`${API_BASE}/api/v1/doctor/consultation/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5393,7 +5395,7 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
         referral_specialty: referralSpecialty,
         referral_notes: referralNotes
       };
-      const res = await fetch('http://127.0.0.1:8000/api/v1/doctor/consultation/save', {
+      const res = await fetch(`${API_BASE}/api/v1/doctor/consultation/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -5412,7 +5414,7 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
 
   const handleAcknowledgeLabResult = async (resultId, notes = '') => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/doctor/lab-results/${resultId}/acknowledge?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`, {
+      const res = await fetch(`${API_BASE}/api/v1/doctor/lab-results/${resultId}/acknowledge?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5465,7 +5467,7 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
 
   const handleOrderLab = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/doctor/lab-orders', {
+      const res = await fetch(`${API_BASE}/api/v1/doctor/lab-orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5497,7 +5499,7 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
 
   const handleOrderImaging = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/doctor/orders/imaging', {
+      const res = await fetch(`${API_BASE}/api/v1/doctor/orders/imaging`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5541,7 +5543,7 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
       await handleSaveConsultation();
 
       // 2. Complete consultation API
-      const res = await fetch('http://127.0.0.1:8000/api/v1/doctor/consultation/complete', {
+      const res = await fetch(`${API_BASE}/api/v1/doctor/consultation/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -7832,7 +7834,7 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
   const fetchDashboard = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/nurse/dashboard');
+      const res = await fetch(`${API_BASE}/api/v1/nurse/dashboard`);
       if (res.ok) setDashboardData(await res.json());
     } catch (e) {
       console.error(e);
@@ -7844,10 +7846,10 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
   const fetchPatientClinicalData = async (ptId) => {
     try {
       const [resV, resA, resM, resN] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/api/v1/nurse/vitals/${ptId}`),
-        fetch(`http://127.0.0.1:8000/api/v1/nurse/assessments/${ptId}`),
-        fetch(`http://127.0.0.1:8000/api/v1/nurse/medication-admin/${ptId}`),
-        fetch(`http://127.0.0.1:8000/api/v1/nurse/nursing-notes/${ptId}`)
+        fetch(`${API_BASE}/api/v1/nurse/vitals/${ptId}`),
+        fetch(`${API_BASE}/api/v1/nurse/assessments/${ptId}`),
+        fetch(`${API_BASE}/api/v1/nurse/medication-admin/${ptId}`),
+        fetch(`${API_BASE}/api/v1/nurse/nursing-notes/${ptId}`)
       ]);
 
       if (resV.ok) setVitalsList(await resV.json());
@@ -7907,7 +7909,7 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
   const handleStartAssessment = async (pt) => {
     selectPatientFromQueue(pt);
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/nurse/assessments/start', {
+      await fetch(`${API_BASE}/api/v1/nurse/assessments/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ queue_id: pt.id, patient_id: pt.patient_id })
@@ -7922,7 +7924,7 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
   const handleFinishAssessment = async () => {
     try {
       setSubmitting(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/nurse/assessments/finish', {
+      const res = await fetch(`${API_BASE}/api/v1/nurse/assessments/finish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ patient_id: selectedPatientId, encounter_id: encounterCode })
@@ -7943,7 +7945,7 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
 
   const handleResolveAlert = async (alertId) => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/nurse/alerts/resolve', {
+      const res = await fetch(`${API_BASE}/api/v1/nurse/alerts/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ alert_id: alertId })
@@ -8002,7 +8004,7 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
         blood_glucose: parseFloat(bloodGlucose)
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/nurse/vitals', {
+      const res = await fetch(`${API_BASE}/api/v1/nurse/vitals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -8038,7 +8040,7 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
         observations: observations
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/nurse/assessments', {
+      const res = await fetch(`${API_BASE}/api/v1/nurse/assessments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -8068,7 +8070,7 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
         reason_not_given: medReason
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/nurse/medication-admin', {
+      const res = await fetch(`${API_BASE}/api/v1/nurse/medication-admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -8098,7 +8100,7 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
         doctor_notified: docNotified
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/nurse/nursing-notes', {
+      const res = await fetch(`${API_BASE}/api/v1/nurse/nursing-notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -9032,7 +9034,7 @@ const ConsultationCharges = () => {
 
   const fetchServiceMaster = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/billing/service-master');
+      const res = await fetch(`${API_BASE}/api/v1/billing/service-master`);
       if (res.ok) setServiceMasterList(await res.json());
     } catch (e) {
       console.error(e);
@@ -9042,7 +9044,7 @@ const ConsultationCharges = () => {
   const calculateBill = async (identifier) => {
     try {
       setLoading(true);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/billing/calculate-bill/${encodeURIComponent(identifier || 'PT-2026-00125')}`);
+      const res = await fetch(`${API_BASE}/api/v1/billing/calculate-bill/${encodeURIComponent(identifier || 'PT-2026-00125')}`);
       if (res.ok) {
         const data = await res.json();
         setBillData(data);
@@ -9082,7 +9084,7 @@ const ConsultationCharges = () => {
         "unit_price": chargeRate
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/billing/add-item', {
+      const res = await fetch(`${API_BASE}/api/v1/billing/add-item`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -9111,7 +9113,7 @@ const ConsultationCharges = () => {
         "transaction_reference": paymentRef || "TXN-CASH"
       };
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/billing/process-payment', {
+      const res = await fetch(`${API_BASE}/api/v1/billing/process-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
