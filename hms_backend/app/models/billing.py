@@ -25,6 +25,7 @@ class BillingAccount(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     account_code = Column(String(50), unique=True, index=True, nullable=False)
+    encounter_code = Column(String(50), nullable=True, index=True) # ENC-2026-00451
     
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
     op_visit_id = Column(Integer, ForeignKey("op_visits.id"), nullable=True)

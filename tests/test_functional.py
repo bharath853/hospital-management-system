@@ -21,7 +21,9 @@ def test_full_clinical_workflow():
     appt_res = client.post("/api/v1/appointments", json={
         "patient_id": patient_id,
         "doctor_id": 1,
-        "appointment_type": "Routine Checkup"
+        "appointment_type": "Routine Checkup",
+        "start_time": "04:30 PM",
+        "Appointment Date": "2026-12-31"
     })
     assert appt_res.status_code == 200
 

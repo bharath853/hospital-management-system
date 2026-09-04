@@ -263,3 +263,6 @@ def seed_database(db: Session):
     from hms_backend.app.services.lab_service import seed_lab_masters_if_needed
     seed_lab_masters_if_needed(db)
 
+    from hms_backend.app.services.admin_service import seed_rbac_and_masters_if_needed
+    seed_rbac_and_masters_if_needed(db)
+

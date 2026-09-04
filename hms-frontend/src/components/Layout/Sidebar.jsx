@@ -21,13 +21,21 @@ const MODULES = [
     id: 'admin',
     title: 'Admin',
     icon: ShieldCheck,
-    color: 'text-sky-400',
+    color: 'text-emerald-400',
     submodules: [
       { title: 'Dashboard', path: '/admin/dashboard' },
       { title: 'User Management', path: '/admin/users' },
+      { title: 'RBAC Matrix', path: '/admin/rbac' },
       { title: 'Doctor Management', path: '/admin/doctors' },
       { title: 'Department Management', path: '/admin/departments' },
       { title: 'Staff Management', path: '/admin/staff' },
+      { title: 'Clinical Masters', path: '/admin/masters' },
+      { title: 'Lab Test Master', path: '/admin/lab-masters' },
+      { title: 'Pharmacy Master', path: '/admin/pharmacy-masters' },
+      { title: 'Wards & Bed Map', path: '/admin/wards-beds' },
+      { title: 'Pricing Catalog', path: '/admin/pricing' },
+      { title: 'System Health', path: '/admin/health' },
+      { title: 'Audit Logs', path: '/admin/audit' },
       { title: 'Reports & Analytics', path: '/admin/reports' },
       { title: 'System Settings', path: '/admin/settings' },
       { title: 'Deleted Records Log', path: '/admin/deleted-records' },
@@ -43,6 +51,7 @@ const MODULES = [
       { title: 'Appointment Booking', path: '/reception/appointment-booking' },
       { title: 'Queue Management', path: '/reception/queue-management' },
       { title: 'OP/IP Registration', path: '/reception/op-ip-registration' },
+      { title: 'Billing & Payments', path: '/reception/billing-payments' },
     ]
   },
   {
@@ -56,6 +65,7 @@ const MODULES = [
       { title: 'Diagnosis', path: '/doctor/diagnosis' },
       { title: 'Prescription', path: '/doctor/prescription' },
       { title: 'Lab Test Request', path: '/doctor/lab-test-request' },
+      { title: 'Received Lab Reports', path: '/doctor/lab-reports' },
       { title: 'Follow-up Schedule', path: '/doctor/follow-up' },
     ]
   },
@@ -157,7 +167,10 @@ export default function Sidebar({ isOpenMobile, onCloseMobile, userRole: userRol
 
   const visibleModules = React.useMemo(() => {
     const r = String(activeRole || '').toLowerCase();
-    if (r === 'admin' || r.includes('admin')) return MODULES;
+    // When in admin panel or when role is admin, show strictly and ONLY the Admin module
+    if (r === 'admin' || r.includes('admin') || location.pathname.startsWith('/admin')) {
+      return MODULES.filter(m => m.id === 'admin');
+    }
     if (r.includes('doctor')) return MODULES.filter(m => m.id === 'doctor');
     if (r.includes('reception')) {
       return MODULES.filter(m => m.id === 'reception' || m.id === 'billing');
@@ -170,7 +183,7 @@ export default function Sidebar({ isOpenMobile, onCloseMobile, userRole: userRol
     if (r.includes('inpatient')) return MODULES.filter(m => m.id === 'inpatient');
     if (r.includes('portal')) return MODULES.filter(m => m.id === 'portal');
     return MODULES;
-  }, [activeRole]);
+  }, [activeRole, location.pathname]);
 
   const [openModule, setOpenModule] = useState(() => {
     const currentModule = visibleModules.find(m => location.pathname.startsWith(`/${m.id}`));
@@ -191,18 +204,18 @@ export default function Sidebar({ isOpenMobile, onCloseMobile, userRole: userRol
   };
 
   return (
-    <aside className="w-72 bg-[#021d17]/85 backdrop-blur-2xl border-r border-emerald-500/20 h-full flex flex-col shadow-2xl text-slate-100 relative z-20">
+    <aside className="w-72 bg-[#052E24] border-r border-[#07543F] h-full flex flex-col shadow-xl text-white relative z-20">
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-5 border-b border-emerald-500/20 shrink-0 justify-between bg-[#011712]/50">
+      <div className="h-16 flex items-center px-5 border-b border-[#07543F] shrink-0 justify-between bg-[#04241c]">
         <h1 className="text-lg font-black text-white flex items-center tracking-tight">
-          <div className="w-9 h-9 bg-gradient-to-tr from-emerald-600 to-teal-400 rounded-xl flex items-center justify-center mr-3 text-slate-950 shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-300/40">
-            <ShieldCheck className="w-5 h-5 text-slate-950" />
+          <div className="w-9 h-9 bg-gradient-to-tr from-[#087F5B] to-[#12B886] rounded-xl flex items-center justify-center mr-3 text-white shadow-md shadow-[#052E24]/50">
+            <ShieldCheck className="w-5 h-5 text-white" />
           </div>
-          <span className="bg-gradient-to-r from-white via-emerald-100 to-teal-200 bg-clip-text text-transparent">
+          <span className="font-extrabold tracking-tight text-white">
             HMS Portal
           </span>
         </h1>
-        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 shadow-inner">
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#DDEFE5] text-[#052E24] shadow-sm">
           {activeRole}
         </span>
       </div>
@@ -220,25 +233,25 @@ export default function Sidebar({ isOpenMobile, onCloseMobile, userRole: userRol
                 onClick={() => toggleModule(module.id)}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-semibold rounded-2xl transition-all duration-200 ${
                   isActive || isOpen
-                    ? 'bg-emerald-500/15 text-white border border-emerald-500/30 shadow-md shadow-black/20' 
-                    : 'text-emerald-100/70 hover:bg-emerald-500/10 hover:text-white border border-transparent'
+                    ? 'bg-[#07543F] text-white shadow-sm' 
+                    : 'text-[#A3BFB5] hover:bg-[#07543F]/50 hover:text-white'
                 }`}
               >
                 <div className="flex items-center">
-                  <div className={`p-1.5 rounded-xl mr-2.5 ${isActive ? 'bg-emerald-500/20' : 'bg-transparent'}`}>
-                    <Icon className={`w-4 h-4 ${module.color}`} />
+                  <div className={`p-1.5 rounded-xl mr-2.5 ${isActive ? 'bg-[#087F5B] text-white' : 'bg-transparent text-[#12B886]'}`}>
+                    <Icon className="w-4 h-4" />
                   </div>
                   <span className="tracking-tight">{module.title}</span>
                 </div>
                 {isOpen ? (
-                  <ChevronDown className="w-4 h-4 text-emerald-400/80 transition-transform" />
+                  <ChevronDown className="w-4 h-4 text-[#12B886] transition-transform" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-emerald-400/50 transition-transform" />
+                  <ChevronRight className="w-4 h-4 text-[#A3BFB5] transition-transform" />
                 )}
               </button>
               
               {isOpen && (
-                <div className="mt-1.5 ml-3 pl-3 border-l-2 border-emerald-500/20 py-1.5 space-y-1">
+                <div className="mt-1.5 ml-3 pl-3 border-l-2 border-[#07543F] py-1.5 space-y-1">
                   {module.submodules.map((sub) => (
                     <NavLink 
                       key={sub.path}
@@ -246,8 +259,8 @@ export default function Sidebar({ isOpenMobile, onCloseMobile, userRole: userRol
                       className={({ isActive: isSubActive }) => 
                         `flex items-center px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
                           isSubActive 
-                            ? 'bg-white text-emerald-950 shadow-lg shadow-black/40 translate-x-1' 
-                            : 'text-emerald-200/70 hover:bg-emerald-500/15 hover:text-white'
+                            ? 'bg-white text-[#052E24] shadow-md translate-x-1' 
+                            : 'text-[#DDEFE5]/80 hover:bg-[#07543F]/40 hover:text-white'
                         }`
                       }
                     >
@@ -255,8 +268,8 @@ export default function Sidebar({ isOpenMobile, onCloseMobile, userRole: userRol
                         <>
                           <Circle className={`w-1.5 h-1.5 mr-2.5 transition-all ${
                             isSubActive 
-                              ? 'fill-emerald-800 text-emerald-800 scale-125' 
-                              : 'fill-emerald-500/40 text-emerald-500/40'
+                              ? 'fill-[#087F5B] text-[#087F5B] scale-125' 
+                              : 'fill-[#12B886]/50 text-[#12B886]/50'
                           }`} />
                           <span className="truncate">{sub.title}</span>
                         </>
@@ -271,12 +284,12 @@ export default function Sidebar({ isOpenMobile, onCloseMobile, userRole: userRol
       </nav>
 
       {/* Footer Switch Account Link */}
-      <div className="p-3.5 border-t border-emerald-500/20 shrink-0 bg-[#011712]/60">
+      <div className="p-3.5 border-t border-[#07543F] shrink-0 bg-[#04241c]">
         <NavLink
           to="/login"
-          className="flex items-center justify-center w-full px-4 py-2.5 bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-200 hover:text-white font-bold text-xs rounded-xl border border-emerald-500/30 shadow-md shadow-black/30 transition-all"
+          className="flex items-center justify-center w-full px-4 py-2.5 bg-[#07543F]/60 hover:bg-[#07543F] text-white font-bold text-xs rounded-xl border border-[#087F5B]/30 shadow-sm transition-all"
         >
-          <LogOut className="w-4 h-4 mr-2 text-rose-400" />
+          <LogOut className="w-4 h-4 mr-2 text-rose-300" />
           Switch Account / Login
         </NavLink>
       </div>

@@ -235,28 +235,24 @@ export default function LabSectionsPage() {
   });
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-slate-950 via-[#041c24] to-[#012f38] text-slate-100 p-4 sm:p-6 lg:p-8 rounded-3xl border border-teal-900/50 shadow-2xl relative overflow-hidden font-sans selection:bg-teal-500 selection:text-white space-y-6">
+    <div className="min-h-full bg-[#F6F8F6] text-[#10201B] p-4 sm:p-6 lg:p-8 space-y-6 font-sans">
       
-      {/* Background Glows */}
-      <div className="absolute inset-0 bg-[radial-gradient(#008080_1px,transparent_1px)] [background-size:24px_24px] opacity-15 pointer-events-none"></div>
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-        <div className="flex items-center space-x-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 flex items-center justify-center text-slate-950 shadow-lg shadow-teal-500/25 ring-1 ring-white/20">
-            <FlaskConical className="w-6 h-6 text-white" />
+      {/* Header Bar - Pure Black */}
+      <div className="bg-black border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-[#087F5B]/30 border border-[#087F5B]/50 flex items-center justify-center text-[#12B886] shadow-sm">
+            <FlaskConical className="w-6 h-6 text-[#12B886]" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">
                 Laboratory Portal & Event Queue
               </h1>
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-950/80 text-teal-300 border border-teal-600/50 px-2.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-[#12B886]/20 text-[#12B886] border border-[#12B886]/30 px-2.5 py-0.5 rounded-full">
                 7 Sections Core
               </span>
             </div>
-            <p className="text-xs text-teal-300/80 font-medium mt-0.5">
+            <p className="text-xs text-[#DDEFE5]/80 font-medium mt-0.5">
               Closed-loop lab order execution, specimen barcode tracking & real-time doctor result dispatch.
             </p>
           </div>
@@ -264,15 +260,15 @@ export default function LabSectionsPage() {
 
         <button
           onClick={fetchDashboardData}
-          className="bg-teal-900/40 hover:bg-teal-800/60 border border-teal-700/50 text-teal-200 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer"
+          className="bg-[#052E24] hover:bg-[#07543F] border border-[#07543F] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 text-[#12B886] ${loading ? 'animate-spin' : ''}`} />
           <span>Refresh Queue</span>
         </button>
       </div>
 
       {/* Section Navigation Bar */}
-      <div className="relative z-10">
+      <div>
         <LabSectionBar 
           activeSection={selectedSection} 
           onSectionChange={handleSectionChange}
@@ -281,46 +277,46 @@ export default function LabSectionsPage() {
       </div>
 
       {/* Dynamic Database-Derived Counter Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 relative z-10">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {[
-          { label: 'New Orders', val: counters.new_orders, color: 'text-amber-400', border: 'border-amber-500/30' },
-          { label: 'Sample Pending', val: counters.sample_pending, color: 'text-orange-400', border: 'border-orange-500/30' },
-          { label: 'Collected', val: counters.sample_collected, color: 'text-sky-400', border: 'border-sky-500/30' },
-          { label: 'Processing', val: counters.processing, color: 'text-teal-400', border: 'border-teal-500/30' },
-          { label: 'Results Pending', val: counters.results_pending, color: 'text-purple-400', border: 'border-purple-500/30' },
-          { label: 'To Verify', val: counters.verification_pending, color: 'text-indigo-400', border: 'border-indigo-500/30' },
-          { label: 'Completed Today', val: counters.completed_today, color: 'text-emerald-400', border: 'border-emerald-500/30' },
-          { label: 'Critical Alerts', val: counters.critical_results, color: 'text-rose-400 font-black', border: 'border-rose-500/40' },
+          { label: 'New Orders', val: counters.new_orders, color: 'text-[#F59E0B]' },
+          { label: 'Sample Pending', val: counters.sample_pending, color: 'text-orange-600' },
+          { label: 'Collected', val: counters.sample_collected, color: 'text-sky-600' },
+          { label: 'Processing', val: counters.processing, color: 'text-[#087F5B]' },
+          { label: 'Results Pending', val: counters.results_pending, color: 'text-purple-600' },
+          { label: 'To Verify', val: counters.verification_pending, color: 'text-indigo-600' },
+          { label: 'Completed Today', val: counters.completed_today, color: 'text-[#087F5B]' },
+          { label: 'Critical Alerts', val: counters.critical_results, color: 'text-rose-600 font-black animate-pulse' },
         ].map((c, i) => (
-          <div key={i} className={`bg-slate-900/80 backdrop-blur-md p-3 rounded-2xl border ${c.border} flex flex-col items-center justify-center text-center shadow-lg`}>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{c.label}</span>
-            <span className={`text-xl font-black ${c.color} mt-1`}>{c.val}</span>
+          <div key={i} className="bg-white border border-[#DDE5E0] rounded-2xl p-3.5 flex flex-col items-center justify-center text-center shadow-card hover:shadow-card-hover transition-all">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#65756E]">{c.label}</span>
+            <span className={`text-xl font-black ${c.color} mt-1 font-mono`}>{c.val}</span>
           </div>
         ))}
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-teal-900/40 relative z-10">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#DDE5E0] shadow-card">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-teal-400 absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-[#65756E] absolute left-3.5 top-3" />
           <input
             type="text"
             placeholder="Search Patient, UHID, or Order Code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-950/80 border border-teal-800/60 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500"
+            className="w-full pl-10 pr-4 py-2 bg-[#F6F8F6] border border-[#DDE5E0] rounded-xl text-xs text-[#10201B] placeholder-[#65756E] focus:outline-none focus:border-[#087F5B]"
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto scrollbar-none pb-1 sm:pb-0">
           {['All', 'ORDERED', 'SAMPLE_COLLECTED', 'SAMPLE_RECEIVED', 'RESULT_ENTERED', 'RELEASED'].map(st => (
             <button
               key={st}
               onClick={() => setFilterStatus(st)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
                 filterStatus === st
-                  ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/20'
-                  : 'bg-slate-950/60 text-slate-400 hover:text-white border border-slate-800'
+                  ? 'bg-[#052E24] text-white shadow-sm font-extrabold'
+                  : 'bg-[#F6F8F6] text-[#65756E] hover:text-[#10201B] border border-[#DDE5E0]'
               }`}
             >
               {st === 'All' ? 'All Orders' : st.replace('_', ' ')}
@@ -330,11 +326,11 @@ export default function LabSectionsPage() {
       </div>
 
       {/* Queue Table */}
-      <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-teal-900/50 overflow-hidden relative z-10 shadow-xl">
+      <div className="bg-white rounded-2xl border border-[#DDE5E0] overflow-hidden shadow-card">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-950/90 text-teal-400 text-[11px] uppercase tracking-wider font-bold border-b border-teal-900/60">
+              <tr className="bg-[#052E24] text-white text-[11px] uppercase tracking-wider font-bold">
                 <th className="py-3.5 px-4">Order Code</th>
                 <th className="py-3.5 px-4">Patient Details</th>
                 <th className="py-3.5 px-4">Ordering Doctor</th>
@@ -345,43 +341,43 @@ export default function LabSectionsPage() {
                 <th className="py-3.5 px-4 text-right">Workflow Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-xs">
+            <tbody className="divide-y divide-[#E5ECE8] bg-white font-medium">
               {filteredQueue.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-500 font-medium">
-                    No orders currently in <span className="text-teal-400 font-bold">{selectedSection}</span> queue matching filters.
+                  <td colSpan={8} className="py-8 text-center text-[#65756E] font-medium">
+                    No orders currently in <span className="text-[#087F5B] font-bold">{selectedSection}</span> queue matching filters.
                   </td>
                 </tr>
               ) : (
                 filteredQueue.map(order => {
                   const spec = order.specimens?.[0];
                   return (
-                    <tr key={order.id} className="hover:bg-teal-950/20 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-teal-300">
+                    <tr key={order.id} className="hover:bg-[#EEF7F1]/60 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-[#087F5B]">
                         {order.order_code}
-                        <div className="text-[10px] text-slate-500 font-normal">{order.encounter_id}</div>
+                        <div className="text-[10px] text-[#65756E] font-normal">{order.encounter_id}</div>
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-white">{order.patient_name}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">{order.patient_uhid} ({order.op_ip_status})</div>
+                        <div className="font-bold text-[#10201B]">{order.patient_name}</div>
+                        <div className="text-[10px] text-[#65756E] font-mono">{order.patient_uhid} ({order.op_ip_status})</div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-slate-200">
-                        <div className="font-medium">{order.ordering_doctor_name}</div>
-                        <div className="text-[10px] text-teal-400/80">{order.department_name}</div>
+                      <td className="py-3.5 px-4 text-[#10201B]">
+                        <div className="font-semibold">{order.ordering_doctor_name}</div>
+                        <div className="text-[10px] text-[#65756E]">{order.department_name}</div>
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-teal-200">{order.items?.[0]?.test_name || 'CBC Test'}</div>
-                        <div className="text-[10px] text-slate-400">{order.items?.[0]?.laboratory_section || selectedSection}</div>
+                        <div className="font-bold text-[#063C2F]">{order.items?.[0]?.test_name || 'CBC Test'}</div>
+                        <div className="text-[10px] text-[#65756E]">{order.items?.[0]?.laboratory_section || selectedSection}</div>
                       </td>
 
                       <td className="py-3.5 px-4">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                          order.priority === 'STAT' ? 'bg-rose-950 text-rose-300 border border-rose-600' :
-                          order.priority === 'URGENT' ? 'bg-amber-950 text-amber-300 border border-amber-600' :
-                          'bg-slate-800 text-slate-300'
+                          order.priority === 'STAT' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                          order.priority === 'URGENT' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                          'bg-[#F6F8F6] text-[#65756E] border border-[#DDE5E0]'
                         }`}>
                           {order.priority}
                         </span>
@@ -390,24 +386,24 @@ export default function LabSectionsPage() {
                       <td className="py-3.5 px-4">
                         {spec ? (
                           <div>
-                            <div className="font-mono text-xs text-sky-300 font-bold flex items-center gap-1">
+                            <div className="font-mono text-xs text-sky-700 font-bold flex items-center gap-1">
                               <Barcode className="w-3.5 h-3.5" />
                               {spec.specimen_code}
                             </div>
-                            <div className="text-[10px] text-slate-400">{spec.specimen_type} ({spec.container_type})</div>
+                            <div className="text-[10px] text-[#65756E]">{spec.specimen_type} ({spec.container_type})</div>
                           </div>
                         ) : (
-                          <span className="text-slate-500 italic">Pending ID</span>
+                          <span className="text-[#65756E] italic">Pending ID</span>
                         )}
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${
-                          order.status === 'RELEASED' ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600/50' :
-                          order.status === 'SAMPLE_COLLECTED' ? 'bg-sky-950/80 text-sky-300 border-sky-600/50' :
-                          order.status === 'SAMPLE_RECEIVED' ? 'bg-teal-950/80 text-teal-300 border-teal-600/50' :
-                          order.status === 'RESULT_ENTERED' ? 'bg-purple-950/80 text-purple-300 border-purple-600/50' :
-                          'bg-amber-950/80 text-amber-300 border-amber-600/50'
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+                          order.status === 'RELEASED' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                          order.status === 'SAMPLE_COLLECTED' ? 'bg-sky-50 text-sky-800 border-sky-200' :
+                          order.status === 'SAMPLE_RECEIVED' ? 'bg-teal-50 text-teal-800 border-teal-200' :
+                          order.status === 'RESULT_ENTERED' ? 'bg-purple-50 text-purple-800 border-purple-200' :
+                          'bg-amber-50 text-amber-800 border-amber-200'
                         }`}>
                           {order.status.replace('_', ' ')}
                         </span>
@@ -418,7 +414,7 @@ export default function LabSectionsPage() {
                           {order.status === 'ORDERED' && (
                             <button
                               onClick={() => { setSelectedOrder(order); setActiveModal('COLLECT'); }}
-                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-[11px] flex items-center gap-1 transition-all"
+                              className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center gap-1 transition-all shadow-sm"
                             >
                               <Barcode className="w-3.5 h-3.5" />
                               Collect Sample
@@ -428,7 +424,7 @@ export default function LabSectionsPage() {
                           {order.status === 'SAMPLE_COLLECTED' && (
                             <button
                               onClick={() => { setSelectedOrder(order); setActiveModal('RECEIVE'); }}
-                              className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-[11px] flex items-center gap-1 transition-all"
+                              className="bg-[#087F5B] hover:bg-[#07543F] text-white font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center gap-1 transition-all shadow-sm"
                             >
                               <Check className="w-3.5 h-3.5" />
                               Receive Sample
@@ -442,7 +438,7 @@ export default function LabSectionsPage() {
                                 setParamValues({ HGB: '13.5', RBC: '4.7', WBC: '8500', PLT: '245000', HCT: '41.0', MCV: '88.0', MCH: '29.0', MCHC: '34.0' });
                                 setActiveModal('ENTRY');
                               }}
-                              className="bg-purple-500 hover:bg-purple-400 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] flex items-center gap-1 transition-all"
+                              className="bg-[#063C2F] hover:bg-[#052E24] text-white font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center gap-1 transition-all shadow-sm"
                             >
                               <FileText className="w-3.5 h-3.5" />
                               Result Entry
@@ -452,7 +448,7 @@ export default function LabSectionsPage() {
                           {(order.status === 'RESULT_ENTERED' || order.status === 'VERIFICATION_PENDING') && (
                             <button
                               onClick={() => { setSelectedOrder(order); setActiveModal('VERIFY'); }}
-                              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-[11px] flex items-center gap-1 transition-all shadow-md shadow-emerald-500/20"
+                              className="bg-[#087F5B] hover:bg-[#07543F] text-white font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center gap-1 transition-all shadow-sm"
                             >
                               <ShieldCheck className="w-3.5 h-3.5" />
                               Verify & Release
@@ -460,7 +456,7 @@ export default function LabSectionsPage() {
                           )}
 
                           {order.status === 'RELEASED' && (
-                            <span className="text-emerald-400 font-bold text-[11px] flex items-center gap-1">
+                            <span className="text-[#087F5B] font-bold text-[11px] flex items-center gap-1">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Delivered to Doctor
                             </span>
                           )}
@@ -477,27 +473,27 @@ export default function LabSectionsPage() {
 
       {/* SAMPLE COLLECTION MODAL */}
       {activeModal === 'COLLECT' && selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-teal-600/50 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-white">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                <Barcode className="w-5 h-5" /> Sample Collection & Barcode Generation
+        <div className="fixed inset-0 z-50 bg-[#052E24]/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-[#DDE5E0] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-[#10201B]">
+            <div className="flex justify-between items-center border-b border-[#DDE5E0] pb-3">
+              <h3 className="text-base font-bold text-[#10201B] flex items-center gap-2">
+                <Barcode className="w-5 h-5 text-amber-600" /> Sample Collection & Barcode Generation
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+              <button onClick={() => setActiveModal(null)} className="text-[#65756E] hover:text-[#10201B]"><X className="w-5 h-5"/></button>
             </div>
 
-            <div className="space-y-2 text-xs bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono">
-              <div><span className="text-slate-500">Order:</span> {selectedOrder.order_code}</div>
-              <div><span className="text-slate-500">Patient:</span> {selectedOrder.patient_name} ({selectedOrder.patient_uhid})</div>
-              <div><span className="text-slate-500">Test:</span> {selectedOrder.items?.[0]?.test_name}</div>
-              <div><span className="text-slate-500">Specimen ID:</span> <span className="text-sky-400 font-bold">SPC-2026-01051</span></div>
-              <div><span className="text-slate-500">Container:</span> EDTA Lavender Tube (Whole Blood)</div>
+            <div className="space-y-2 text-xs bg-[#F6F8F6] p-4 rounded-2xl border border-[#DDE5E0] font-mono">
+              <div><span className="text-[#65756E]">Order:</span> <span className="text-[#10201B] font-bold">{selectedOrder.order_code}</span></div>
+              <div><span className="text-[#65756E]">Patient:</span> <span className="text-[#10201B] font-bold">{selectedOrder.patient_name} ({selectedOrder.patient_uhid})</span></div>
+              <div><span className="text-[#65756E]">Test:</span> <span className="text-[#10201B]">{selectedOrder.items?.[0]?.test_name}</span></div>
+              <div><span className="text-[#65756E]">Specimen ID:</span> <span className="text-sky-700 font-bold">SPC-2026-01051</span></div>
+              <div><span className="text-[#65756E]">Container:</span> <span className="text-[#10201B]">EDTA Lavender Tube (Whole Blood)</span></div>
             </div>
 
             <button
               onClick={() => handleCollectSample(selectedOrder)}
               disabled={isSubmitting}
-              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow-lg transition-all"
+              className="w-full bg-[#087F5B] hover:bg-[#07543F] text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow-sm transition-all"
             >
               {isSubmitting ? 'Generating Barcode...' : 'Confirm Sample Collected'}
             </button>
@@ -507,27 +503,27 @@ export default function LabSectionsPage() {
 
       {/* SAMPLE RECEPTION & REJECTION MODAL */}
       {activeModal === 'RECEIVE' && selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-teal-600/50 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-white">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-teal-300 flex items-center gap-2">
-                <Check className="w-5 h-5" /> Sample Reception Desk
+        <div className="fixed inset-0 z-50 bg-[#052E24]/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-[#DDE5E0] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-[#10201B]">
+            <div className="flex justify-between items-center border-b border-[#DDE5E0] pb-3">
+              <h3 className="text-base font-bold text-[#10201B] flex items-center gap-2">
+                <Check className="w-5 h-5 text-[#087F5B]" /> Sample Reception Desk
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+              <button onClick={() => setActiveModal(null)} className="text-[#65756E] hover:text-[#10201B]"><X className="w-5 h-5"/></button>
             </div>
 
-            <div className="text-xs bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
-              <div><span className="text-slate-500">Patient:</span> <span className="font-bold text-white">{selectedOrder.patient_name}</span></div>
-              <div><span className="text-slate-500">Specimen Code:</span> <span className="font-mono text-teal-300 font-bold">{selectedOrder.specimens?.[0]?.specimen_code || 'SPC-2026-01051'}</span></div>
-              <div><span className="text-slate-500">Ordering Doctor:</span> {selectedOrder.ordering_doctor_name}</div>
+            <div className="text-xs bg-[#F6F8F6] p-4 rounded-2xl border border-[#DDE5E0] space-y-1.5">
+              <div><span className="text-[#65756E]">Patient:</span> <span className="font-bold text-[#10201B]">{selectedOrder.patient_name}</span></div>
+              <div><span className="text-[#65756E]">Specimen Code:</span> <span className="font-mono text-[#087F5B] font-bold">{selectedOrder.specimens?.[0]?.specimen_code || 'SPC-2026-01051'}</span></div>
+              <div><span className="text-[#65756E]">Ordering Doctor:</span> <span className="text-[#10201B]">{selectedOrder.ordering_doctor_name}</span></div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] text-slate-400 font-bold uppercase">If Rejecting, Select Reason:</label>
+              <label className="text-[11px] text-[#65756E] font-bold uppercase">If Rejecting, Select Reason:</label>
               <select
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white"
+                className="w-full bg-[#F6F8F6] border border-[#DDE5E0] rounded-xl p-2.5 text-xs text-[#10201B] focus:border-[#087F5B]"
               >
                 <option value="Hemolysed specimen">Hemolysed specimen</option>
                 <option value="Clotted specimen">Clotted specimen</option>
@@ -541,14 +537,14 @@ export default function LabSectionsPage() {
               <button
                 onClick={() => handleRejectSample(selectedOrder)}
                 disabled={isSubmitting}
-                className="flex-1 bg-rose-950 hover:bg-rose-900 border border-rose-600 text-rose-300 font-bold py-2.5 rounded-xl text-xs uppercase"
+                className="flex-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold py-2.5 rounded-xl text-xs uppercase transition"
               >
                 Reject Specimen
               </button>
               <button
                 onClick={() => handleReceiveSample(selectedOrder)}
                 disabled={isSubmitting}
-                className="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs uppercase shadow-lg"
+                className="flex-1 bg-[#087F5B] hover:bg-[#07543F] text-white font-bold py-2.5 rounded-xl text-xs uppercase shadow-sm transition"
               >
                 Receive Sample
               </button>
@@ -559,18 +555,18 @@ export default function LabSectionsPage() {
 
       {/* RESULT ENTRY MODAL */}
       {activeModal === 'ENTRY' && selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-purple-600/50 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl text-white">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-purple-300 flex items-center gap-2">
-                <FileText className="w-5 h-5" /> Dynamic Parameter Result Entry
+        <div className="fixed inset-0 z-50 bg-[#052E24]/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-[#DDE5E0] rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl text-[#10201B]">
+            <div className="flex justify-between items-center border-b border-[#DDE5E0] pb-3">
+              <h3 className="text-base font-bold text-[#10201B] flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[#087F5B]" /> Dynamic Parameter Result Entry
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+              <button onClick={() => setActiveModal(null)} className="text-[#65756E] hover:text-[#10201B]"><X className="w-5 h-5"/></button>
             </div>
 
-            <div className="text-xs bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between">
-              <div><span className="text-slate-500">Patient:</span> <span className="font-bold text-white">{selectedOrder.patient_name}</span></div>
-              <div><span className="text-slate-500">Test:</span> <span className="text-teal-300 font-bold">{selectedOrder.items?.[0]?.test_name}</span></div>
+            <div className="text-xs bg-[#F6F8F6] p-3.5 rounded-2xl border border-[#DDE5E0] flex justify-between">
+              <div><span className="text-[#65756E]">Patient:</span> <span className="font-bold text-[#10201B]">{selectedOrder.patient_name}</span></div>
+              <div><span className="text-[#65756E]">Test:</span> <span className="text-[#087F5B] font-bold">{selectedOrder.items?.[0]?.test_name}</span></div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto p-1">
@@ -582,18 +578,18 @@ export default function LabSectionsPage() {
                 { code: 'HCT', name: 'Hematocrit', unit: '%', ref: '36.0 - 50.0' },
                 { code: 'MCV', name: 'MCV', unit: 'fL', ref: '80.0 - 100.0' },
               ].map(p => (
-                <div key={p.code} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                  <div className="flex justify-between text-[11px] font-bold text-slate-300">
+                <div key={p.code} className="bg-[#F6F8F6] p-3 rounded-xl border border-[#DDE5E0] space-y-1">
+                  <div className="flex justify-between text-[11px] font-bold text-[#10201B]">
                     <span>{p.name}</span>
-                    <span className="text-[10px] text-slate-500">{p.unit}</span>
+                    <span className="text-[10px] text-[#65756E]">{p.unit}</span>
                   </div>
                   <input
                     type="text"
                     value={paramValues[p.code] || ''}
                     onChange={(e) => setParamValues({ ...paramValues, [p.code]: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-mono"
+                    className="w-full bg-white border border-[#DDE5E0] rounded-lg p-1.5 text-xs text-[#10201B] font-mono focus:border-[#087F5B]"
                   />
-                  <div className="text-[9px] text-slate-500">Ref: {p.ref}</div>
+                  <div className="text-[9px] text-[#65756E]">Ref: {p.ref}</div>
                 </div>
               ))}
             </div>
@@ -601,7 +597,7 @@ export default function LabSectionsPage() {
             <button
               onClick={() => handleSubmitResultEntry(selectedOrder)}
               disabled={isSubmitting}
-              className="w-full bg-purple-500 hover:bg-purple-400 text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow-lg transition-all"
+              className="w-full bg-[#087F5B] hover:bg-[#07543F] text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow-sm transition-all"
             >
               Submit for Technical Verification
             </button>
@@ -611,36 +607,36 @@ export default function LabSectionsPage() {
 
       {/* TECHNICAL VERIFICATION & RELEASE MODAL */}
       {activeModal === 'VERIFY' && selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-emerald-600/50 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-white">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5" /> Technical Verification & Release
+        <div className="fixed inset-0 z-50 bg-[#052E24]/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-[#DDE5E0] rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-[#10201B]">
+            <div className="flex justify-between items-center border-b border-[#DDE5E0] pb-3">
+              <h3 className="text-base font-bold text-[#10201B] flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#087F5B]" /> Technical Verification & Release
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
+              <button onClick={() => setActiveModal(null)} className="text-[#65756E] hover:text-[#10201B]"><X className="w-5 h-5"/></button>
             </div>
 
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
-              <div className="flex justify-between border-b border-slate-800 pb-2">
-                <div><span className="text-slate-500">Patient:</span> <span className="font-bold text-white">{selectedOrder.patient_name}</span></div>
-                <div><span className="text-slate-500">Target Doctor:</span> <span className="font-bold text-emerald-300">{selectedOrder.ordering_doctor_name} ONLY</span></div>
+            <div className="bg-[#F6F8F6] p-4 rounded-2xl border border-[#DDE5E0] space-y-2.5 text-xs">
+              <div className="flex justify-between border-b border-[#DDE5E0] pb-2">
+                <div><span className="text-[#65756E]">Patient:</span> <span className="font-bold text-[#10201B]">{selectedOrder.patient_name}</span></div>
+                <div><span className="text-[#65756E]">Target Doctor:</span> <span className="font-bold text-[#087F5B]">{selectedOrder.ordering_doctor_name} ONLY</span></div>
               </div>
 
               <div className="space-y-1 font-mono text-[11px]">
-                <div className="flex justify-between"><span>Hemoglobin:</span> <span className="text-emerald-400 font-bold">13.5 g/dL (NORMAL)</span></div>
-                <div className="flex justify-between"><span>WBC Count:</span> <span className="text-emerald-400 font-bold">8,500 /µL (NORMAL)</span></div>
-                <div className="flex justify-between"><span>Platelets:</span> <span className="text-emerald-400 font-bold">245,000 /µL (NORMAL)</span></div>
+                <div className="flex justify-between text-[#10201B]"><span>Hemoglobin:</span> <span className="text-[#087F5B] font-bold">13.5 g/dL (NORMAL)</span></div>
+                <div className="flex justify-between text-[#10201B]"><span>WBC Count:</span> <span className="text-[#087F5B] font-bold">8,500 /µL (NORMAL)</span></div>
+                <div className="flex justify-between text-[#10201B]"><span>Platelets:</span> <span className="text-[#087F5B] font-bold">245,000 /µL (NORMAL)</span></div>
               </div>
             </div>
 
-            <div className="bg-teal-950/40 p-3 rounded-xl border border-teal-800/50 text-[11px] text-teal-200">
+            <div className="bg-[#EEF7F1] p-3.5 rounded-xl border border-[#087F5B]/30 text-[11px] text-[#052E24]">
               ⚡ <strong>Targeted Delivery:</strong> Releasing this report will trigger an event routed exclusively to <strong>{selectedOrder.ordering_doctor_name}</strong>'s portal.
             </div>
 
             <button
               onClick={() => handleVerifyAndRelease(selectedOrder)}
               disabled={isSubmitting}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 rounded-xl uppercase tracking-wider text-xs shadow-lg transition-all"
+              className="w-full bg-[#087F5B] hover:bg-[#07543F] text-white font-black py-3 rounded-xl uppercase tracking-wider text-xs shadow-sm transition-all"
             >
               Verify & Release Report Directly to Doctor
             </button>

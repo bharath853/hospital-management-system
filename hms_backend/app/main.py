@@ -31,6 +31,7 @@ import json
 from hms_backend.app.core.websocket import manager, WebSocket, WebSocketDisconnect
 
 from hms_backend.app.services.lab_service import seed_lab_masters_if_needed
+from hms_backend.app.services.admin_service import seed_rbac_and_masters_if_needed
 
 # Ensure all tables are created in SQLite database
 Base.metadata.create_all(bind=engine)
@@ -38,6 +39,7 @@ db_init = SessionLocal()
 try:
     seed_database(db_init)
     seed_lab_masters_if_needed(db_init)
+    seed_rbac_and_masters_if_needed(db_init)
 finally:
     db_init.close()
 
@@ -52,6 +54,7 @@ async def lifespan(app: FastAPI):
     try:
         seed_database(db)
         seed_lab_masters_if_needed(db)
+        seed_rbac_and_masters_if_needed(db)
     finally:
         db.close()
     yield

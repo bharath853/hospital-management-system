@@ -11,6 +11,8 @@ from hms_backend.app.models.lab import (
 )
 from hms_backend.app.models.patient import Patient
 from hms_backend.app.models.doctor import Doctor
+from hms_backend.app.models.encounter import Encounter
+from hms_backend.app.models.queue import QueueEntry
 from hms_backend.app.services.lab_service import (
     seed_lab_masters_if_needed, compute_parameter_flag, emit_lab_event
 )
@@ -389,8 +391,9 @@ async def enter_result(payload: dict, db: Session = Depends(get_db)):
 
 # 7. Technical Verification & Release API (ORDERING DOCTOR TARGETING ONLY)
 @router.post("/results/verify-release")
-async def verify_and_release_result(payload: dict, db: Session = Depends(get_db)):
-    result_id = payload.get("result_id") or payload.get("id")
+@router.post("/results/{result_id}/verify-and-release")
+async def verify_and_release_result(payload: dict, result_id: Optional[int] = None, db: Session = Depends(get_db)):
+    result_id = result_id or payload.get("result_id") or payload.get("id")
     order_id = payload.get("lab_order_id")
     
     lab_res = None
@@ -414,6 +417,14 @@ async def verify_and_release_result(payload: dict, db: Session = Depends(get_db)
 
     if order:
         order.status = "RELEASED"
+
+    # State machine transition: AWAITING_RESULTS -> RESULTS_AVAILABLE
+    enc = db.query(Encounter).filter(Encounter.encounter_code == lab_res.encounter_id).first()
+    if enc and enc.status == "AWAITING_RESULTS":
+        enc.status = "RESULTS_AVAILABLE"
+        q_entry = db.query(QueueEntry).filter(QueueEntry.patient_id == enc.patient_id).first()
+        if q_entry:
+            q_entry.queue_status = "RESULTS_AVAILABLE"
 
     db.commit()
 

@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from hms_backend.app.core.database import get_db
 from hms_backend.app.models.appointment import Appointment
 from hms_backend.app.models.patient import Patient
+from hms_backend.app.models.queue import QueueEntry
+from hms_backend.app.models.encounter import Encounter
+from hms_backend.app.models.doctor import Doctor
 from hms_backend.app.utils.audit import log_deleted_record
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
@@ -132,6 +135,18 @@ def book_appointment(payload: dict, db: Session = Depends(get_db)):
     start_time = payload.get("start_time") or payload.get("Time Slot") or "09:30 AM"
     end_time = payload.get("end_time") or "10:00 AM"
 
+    # VALIDATE PAST DATE RESTRICTION
+    today_date = datetime.now().date()
+    try:
+        booking_date = datetime.strptime(appt_date, "%Y-%m-%d").date()
+        if booking_date < today_date:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot book appointment for a past date ({appt_date}). Please select today or a future date."
+            )
+    except ValueError:
+        pass
+
     # CONCURRENCY & DOUBLE BOOKING PROTECTION
     existing_conflict = db.query(Appointment).filter(
         Appointment.doctor_name == doc_name,
@@ -257,6 +272,84 @@ def update_appointment_status(appt_id: int, payload: dict, db: Session = Depends
     appt.appointment_status = new_status
     appt.updated_at = datetime.now(timezone.utc)
     db.commit()
+
+    if str(new_status).lower() in ["checked-in", "checked_in", "check-in"]:
+        today_str = str(datetime.now().date())
+        # Check if queue entry exists
+        existing_q = db.query(QueueEntry).filter(
+            (QueueEntry.appointment_id == appt.id) | 
+            ((QueueEntry.patient_id == appt.patient_id) & (QueueEntry.queue_date == today_str))
+        ).first()
+
+        if not existing_q:
+            dept_name = appt.department_name or "Cardiology"
+            dept_prefix = (dept_name[0] if dept_name else "C").upper()
+            existing_count = db.query(QueueEntry).filter(QueueEntry.queue_date == today_str).count()
+            token_num = f"{dept_prefix}-{15 + existing_count:03d}"
+            
+            waiting_ahead = db.query(QueueEntry).filter(
+                QueueEntry.doctor_name == appt.doctor_name,
+                QueueEntry.queue_date == today_str,
+                QueueEntry.queue_status.in_(["WAITING", "CHECKED_IN", "RECALLED"])
+            ).count()
+            position = waiting_ahead + 1
+            est_wait = f"{max(5, (position - 1) * 10)} min"
+            checkin_time_str = datetime.now().strftime("%I:%M %p")
+            ts_suffix = str(int(datetime.now().timestamp() * 1000))[-8:]
+
+            assigned_doc_id = appt.doctor_id or 1
+
+            # Create Encounter
+            encounter = Encounter(
+                encounter_code=f"ENC-2026-{ts_suffix}",
+                patient_id=appt.patient_id,
+                appointment_id=appt.id,
+                assigned_doctor_id=assigned_doc_id,
+                doctor_id=assigned_doc_id,
+                encounter_type="OP",
+                status="CHECKED_IN",
+                doctor_name=appt.doctor_name,
+                department_name=appt.department_name,
+                priority=appt.priority or "Normal",
+                check_in_time=datetime.now(timezone.utc)
+            )
+            db.add(encounter)
+
+            # Create Queue Entry
+            q_entry = QueueEntry(
+                queue_code=f"Q-2026-{ts_suffix[-6:]}",
+                appointment_id=appt.id,
+                patient_id=appt.patient_id,
+                doctor_name=appt.doctor_name,
+                department_name=appt.department_name,
+                queue_date=today_str,
+                token_number=token_num,
+                queue_type="Appointment",
+                priority=appt.priority or "Normal",
+                priority_rank=3,
+                check_in_time=checkin_time_str,
+                queue_position=position,
+                estimated_wait_time=est_wait,
+                queue_status="CHECKED_IN",
+                nursing_status="WAITING",
+                vitals_recorded=False,
+                consultation_room="Room 204",
+                created_by="Receptionist"
+            )
+            db.add(q_entry)
+            db.commit()
+
+            # Sync to generic table
+            from hms_backend.app.utils.generic_crud import create_generic_record
+            pt_name = appt.patient.full_name if appt.patient else "Arun Kumar"
+            create_generic_record(db, "reception_queue", {
+                "Token No": token_num,
+                "Patient": pt_name,
+                "Doctor": appt.doctor_name,
+                "Est. Time": est_wait,
+                "Status": "WAITING",
+                "Room": "Room 204"
+            })
 
     return {"status": "success", "message": f"Appointment #{appt_id} status updated to {new_status}."}
 

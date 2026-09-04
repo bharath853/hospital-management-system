@@ -37,19 +37,51 @@ def get_service_master(db: Session = Depends(get_db)):
     return result
 
 
-# 2. Rule-Based Billing Calculation Engine
+# 2. Rule-Based Billing Calculation Engine (Encounter-Scoped)
 @router.get("/calculate-bill/{patient_identifier}")
-def calculate_patient_bill(patient_identifier: str, db: Session = Depends(get_db)):
-    # 1. Resolve Patient
-    pt = db.query(Patient).filter(
-        (Patient.id == patient_identifier) if str(patient_identifier).isdigit() else (Patient.patient_id == str(patient_identifier)) | (Patient.patient_code == str(patient_identifier)) | (Patient.full_name.ilike(f"%{patient_identifier}%"))
-    ).first()
+def calculate_patient_bill(
+    patient_identifier: str, 
+    encounter_code: str = Query(None),
+    db: Session = Depends(get_db)
+):
+    from hms_backend.app.models.encounter import Encounter
+    from hms_backend.app.models.consultation import DoctorConsultation
+    from hms_backend.app.models.lab import LabOrder, LabOrderItem, LabResult
+    from hms_backend.app.models.doctor import Doctor
+
+    # 1. Resolve Encounter & Patient
+    enc = None
+    pt = None
+    
+    # Check if patient_identifier is directly an encounter code
+    if str(patient_identifier).startswith("ENC-"):
+        enc = db.query(Encounter).filter(Encounter.encounter_code == patient_identifier).first()
+        if enc:
+            pt = db.query(Patient).filter(Patient.id == enc.patient_id).first()
+    elif encounter_code:
+        enc = db.query(Encounter).filter(Encounter.encounter_code == encounter_code).first()
+        if enc:
+            pt = db.query(Patient).filter(Patient.id == enc.patient_id).first()
+
+    if not pt:
+        pt = db.query(Patient).filter(
+            (Patient.id == patient_identifier) if str(patient_identifier).isdigit() else (Patient.patient_id == str(patient_identifier)) | (Patient.patient_code == str(patient_identifier)) | (Patient.full_name.ilike(f"%{patient_identifier}%"))
+        ).first()
 
     pt_id = pt.id if pt else 1
-    pt_name = pt.full_name if pt else "Arun Kumar"
-    pt_uhid = pt.patient_id if pt else "PT-2026-00125"
+    pt_name = pt.full_name if pt else "Patient"
+    pt_uhid = pt.patient_code or pt.patient_id if pt else "PT-2026-00125"
 
-    # 2. Check Active IP Admission first, else OP Visit
+    # If no specific encounter resolved yet, find active Encounter or IP/OP record
+    if not enc and pt:
+        enc = db.query(Encounter).filter(
+            Encounter.patient_id == pt.id
+        ).order_by(Encounter.id.desc()).first()
+
+    enc_code = enc.encounter_code if enc else f"ENC-2026-{pt_id:05d}"
+    encounter_type = enc.encounter_type if enc else "OP"
+
+    # Check Active IP Admission first, else OP Visit
     ip_adm = db.query(IpAdmission).filter(
         IpAdmission.patient_id == pt_id,
         IpAdmission.admission_status != "Discharged"
@@ -61,81 +93,114 @@ def calculate_patient_bill(patient_identifier: str, db: Session = Depends(get_db
             OpVisit.patient_id == pt_id
         ).order_by(OpVisit.id.desc()).first()
 
-    patient_type = "IP" if ip_adm else "OP"
-    encounter_code = ip_adm.ip_admission_code if ip_adm else (op_v.op_visit_code if op_v else "OPV-2026-1001")
+    patient_type = "IP" if (ip_adm or encounter_type == "IP") else "OP"
 
-    # Get or create Billing Account
+    # Get or create Billing Account tied to this Encounter
     acct = db.query(BillingAccount).filter(
-        BillingAccount.patient_id == pt_id,
-        BillingAccount.status != "Closed"
+        (BillingAccount.encounter_code == enc_code) | 
+        ((BillingAccount.patient_id == pt_id) & (BillingAccount.status != "Closed"))
     ).first()
 
     if not acct:
         existing_acct_count = db.query(BillingAccount).count()
         acct = BillingAccount(
             account_code=f"BA-2026-{100 + existing_acct_count + 1}",
+            encounter_code=enc_code,
             patient_id=pt_id,
             op_visit_id=op_v.id if op_v else None,
             ip_admission_id=ip_adm.id if ip_adm else None,
             account_type=patient_type,
-            status="Pending"
+            status="OPEN"
         )
         db.add(acct)
         db.commit()
         db.refresh(acct)
+    elif not acct.encounter_code and enc_code:
+        acct.encounter_code = enc_code
+        db.commit()
 
-    # RULE-BASED BILLABLE ITEMS AGGREGATION
+    # DYNAMIC TRANSACTION-BASED BILLABLE ITEMS AGGREGATION
     bill_items_list = []
 
     # Category A: Consultation Charges
-    doc_name = ip_adm.admitting_doctor_name if ip_adm else (op_v.doctor_name if op_v else "Dr. Madhavan")
-    dept_name = ip_adm.department_name if ip_adm else (op_v.department_name if op_v else "Cardiology")
+    doc_name = enc.doctor_name if enc and enc.doctor_name else (ip_adm.admitting_doctor_name if ip_adm else (op_v.doctor_name if op_v else "Dr. Madhavan"))
+    dept_name = enc.department_name if enc and enc.department_name else (ip_adm.department_name if ip_adm else (op_v.department_name if op_v else "Cardiology"))
     
+    # Check if a consultation record exists for this encounter
+    consult_rec = db.query(DoctorConsultation).filter(
+        DoctorConsultation.encounter_id == enc_code
+    ).first()
+
     if patient_type == "IP":
-        # IP Consultation Visits (Default 2 visits e.g. ₹1,000)
+        # IP Consultation Visits (e.g. ₹800)
         bill_items_list.append({
             "category": "Consultation",
-            "service_name": f"Specialist Consultation ({doc_name})",
-            "qty": 2,
-            "unit": "Visits",
-            "rate": 500.0,
-            "amount": 1000.0,
-            "source_type": "CONSULTATION",
-            "source_id": encounter_code
-        })
-    else:
-        # OP Consultation (1 visit e.g. ₹500)
-        bill_items_list.append({
-            "category": "Consultation",
-            "service_name": f"Specialist Visit ({doc_name})",
+            "service_name": f"Inpatient Specialist Visit ({doc_name})",
             "qty": 1,
             "unit": "Visit",
-            "rate": 500.0,
-            "amount": 500.0,
+            "rate": 800.0,
+            "amount": 800.0,
             "source_type": "CONSULTATION",
-            "source_id": encounter_code
+            "source_id": enc_code
+        })
+    else:
+        # OP Consultation (₹500)
+        consult_fee = 500.0
+        bill_items_list.append({
+            "category": "Consultation",
+            "service_name": f"Outpatient Consultation ({doc_name})",
+            "qty": 1,
+            "unit": "Visit",
+            "rate": consult_fee,
+            "amount": consult_fee,
+            "source_type": "CONSULTATION",
+            "source_id": enc_code
         })
 
-    # Category B: Automatic Bed & Nursing Charges (For IP Patients)
+    # Category B: IP Bed & Nursing Charges (Dynamic Calculation by Days Stayed)
     ward_info = "General Medicine Ward"
     room_info = "Room 204"
     bed_info = "Bed 02"
     admission_date_str = datetime.now().strftime("%Y-%m-%d")
 
-    if patient_type == "IP" and ip_adm:
-        ward_info = ip_adm.ward_name or ward_info
-        room_info = ip_adm.room_number or room_info
-        bed_info = ip_adm.bed_number or bed_info
-        admission_date_str = ip_adm.admission_date or admission_date_str
-
-        # Calculate billable days (Default 2 days stayed)
-        days_stayed = 2
+    if patient_type == "IP":
+        days_stayed = 1
         bed_rate = 1500.0
-        if "Deluxe" in ward_info:
-            bed_rate = 5000.0
-        elif "ICU" in ward_info:
-            bed_rate = 8500.0
 
+        if ip_adm:
+            ward_info = ip_adm.ward_name or ward_info
+            room_info = ip_adm.room_number or room_info
+            bed_info = ip_adm.bed_number or bed_info
+            admission_date_str = ip_adm.admission_date or admission_date_str
+            
+            # Calculate actual days stayed if date parseable
+            try:
+                adm_d = datetime.strptime(ip_adm.admission_date[:10], "%Y-%m-%d").date()
+                days_diff = (datetime.now().date() - adm_d).days
+                days_stayed = max(1, days_diff)
+            except Exception:
+                days_stayed = 2
+
+            if "Deluxe" in ward_info:
+                bed_rate = 5000.0
+            elif "ICU" in ward_info:
+                bed_rate = 8500.0
+            elif "Special" in ward_info:
+                bed_rate = 3000.0
+
+        # Admission Charge
+        bill_items_list.append({
+            "category": "Admission",
+            "service_name": "IP Admission & Administrative Processing Fee",
+            "qty": 1,
+            "unit": "One-Time",
+            "rate": 500.0,
+            "amount": 500.0,
+            "source_type": "ADMISSION",
+            "source_id": f"ADM-{ip_adm.id if ip_adm else 1}"
+        })
+
+        # Daily Bed Stay
         bill_items_list.append({
             "category": "Bed",
             "service_name": f"Hospital Ward Stay ({ward_info} - {bed_info})",
@@ -144,12 +209,13 @@ def calculate_patient_bill(patient_identifier: str, db: Session = Depends(get_db
             "rate": bed_rate,
             "amount": days_stayed * bed_rate,
             "source_type": "BED",
-            "source_id": f"BED-{ip_adm.bed_id or 1}"
+            "source_id": f"BED-{ip_adm.bed_id if ip_adm else 1}"
         })
 
+        # Daily Nursing Care
         bill_items_list.append({
             "category": "Nursing",
-            "service_name": "Inpatient Nursing Care & Vital Monitoring",
+            "service_name": "Inpatient 24/7 Nursing Care & Vital Monitoring",
             "qty": days_stayed,
             "unit": "Days",
             "rate": 500.0,
@@ -158,12 +224,48 @@ def calculate_patient_bill(patient_identifier: str, db: Session = Depends(get_db
             "source_id": "NURS-001"
         })
 
-    # Category C: Laboratory & Imaging Charges
-    lab_requests = db.query(TestRequest).filter(
-        TestRequest.patient_name.ilike(f"%{pt_name}%")
+    # Category C: Laboratory & Diagnostic Charges (Encounter-Linked)
+    lab_orders = db.query(LabOrder).filter(
+        (LabOrder.encounter_id == enc_code) | 
+        ((LabOrder.patient_id == pt_id) & (LabOrder.status.in_(["ORDERED", "SAMPLE_COLLECTED", "SAMPLE_RECEIVED", "PROCESSING", "RESULT_ENTERED", "VERIFICATION_PENDING", "VERIFIED", "RELEASED"])))
     ).all()
 
-    if lab_requests:
+    if lab_orders:
+        for lo in lab_orders:
+            for item in lo.items:
+                test_rate = 300.0
+                if "CBC" in item.test_name or "Hemogram" in item.test_name:
+                    test_rate = 300.0
+                elif "Lipid" in item.test_name:
+                    test_rate = 600.0
+                elif "HbA1c" in item.test_name:
+                    test_rate = 450.0
+                elif "Renal" in item.test_name or "Kidney" in item.test_name:
+                    test_rate = 550.0
+                elif "Liver" in item.test_name or "LFT" in item.test_name:
+                    test_rate = 650.0
+                elif "Thyroid" in item.test_name:
+                    test_rate = 500.0
+                elif "Glucose" in item.test_name or "Sugar" in item.test_name:
+                    test_rate = 120.0
+                elif "Electrolytes" in item.test_name:
+                    test_rate = 400.0
+
+                bill_items_list.append({
+                    "category": "Laboratory",
+                    "service_name": f"{item.test_name} ({item.laboratory_section})",
+                    "qty": 1,
+                    "unit": "Test",
+                    "rate": test_rate,
+                    "amount": test_rate,
+                    "source_type": "LAB",
+                    "source_id": lo.order_code
+                })
+    else:
+        # Fallback to TestRequest
+        lab_requests = db.query(TestRequest).filter(
+            TestRequest.patient_name.ilike(f"%{pt_name}%")
+        ).all()
         for lr in lab_requests:
             rate = 250.0
             if "MRI" in lr.test_type:
@@ -172,7 +274,6 @@ def calculate_patient_bill(patient_identifier: str, db: Session = Depends(get_db
                 rate = 400.0
             elif "Sugar" in lr.test_type:
                 rate = 100.0
-
             bill_items_list.append({
                 "category": "Laboratory" if "MRI" not in lr.test_type and "X-Ray" not in lr.test_type else "Imaging",
                 "service_name": lr.test_type,
@@ -183,45 +284,48 @@ def calculate_patient_bill(patient_identifier: str, db: Session = Depends(get_db
                 "source_type": "LAB",
                 "source_id": lr.req_code or f"LAB-{lr.id}"
             })
-    else:
-        # Default Lab/Imaging items for initial demonstrative bill
-        bill_items_list.append({
-            "category": "Laboratory",
-            "service_name": "CBC Blood Profile",
-            "qty": 1,
-            "unit": "Test",
-            "rate": 250.0,
-            "amount": 250.0,
-            "source_type": "LAB",
-            "source_id": "LAB-401"
-        })
-        bill_items_list.append({
-            "category": "Imaging",
-            "service_name": "Chest X-Ray",
-            "qty": 1,
-            "unit": "Scan",
-            "rate": 400.0,
-            "amount": 400.0,
-            "source_type": "IMAGING",
-            "source_id": "IMG-001"
-        })
 
-    # Category D: Pharmacy Charges
+    # Category D: Pharmacy Charges (Encounter-Linked Dispensing)
     prescriptions = db.query(Prescription).filter(
-        Prescription.patient_name.ilike(f"%{pt_name}%")
+        (Prescription.patient_name.ilike(f"%{pt_name}%"))
     ).all()
 
-    pharmacy_total = 1250.0 if patient_type == "IP" else 350.0
-    bill_items_list.append({
-        "category": "Pharmacy",
-        "service_name": "Inpatient / OP Dispensed Medicines",
-        "qty": 1,
-        "unit": "Order",
-        "rate": pharmacy_total,
-        "amount": pharmacy_total,
-        "source_type": "PHARMACY",
-        "source_id": "PHARM-901"
-    })
+    pharmacy_items_found = False
+    if consult_rec and consult_rec.prescription_json:
+        try:
+            import json
+            rx_list = json.loads(consult_rec.prescription_json)
+            if isinstance(rx_list, list) and rx_list:
+                for rx in rx_list:
+                    med_name = rx.get("medicine") or rx.get("medicine_name") or "Prescribed Medication"
+                    qty = int(rx.get("quantity") or 10)
+                    rate = 15.0 if "Paracetamol" in med_name else (45.0 if "Amoxicillin" in med_name else (135.0 if "Ferrous" in med_name else 50.0))
+                    bill_items_list.append({
+                        "category": "Pharmacy",
+                        "service_name": f"{med_name} (Dispensed)",
+                        "qty": 1,
+                        "unit": "Pack",
+                        "rate": rate,
+                        "amount": rate,
+                        "source_type": "PHARMACY",
+                        "source_id": enc_code
+                    })
+                pharmacy_items_found = True
+        except Exception:
+            pass
+
+    if not pharmacy_items_found and prescriptions:
+        pharmacy_total = 1250.0 if patient_type == "IP" else 250.0
+        bill_items_list.append({
+            "category": "Pharmacy",
+            "service_name": "Inpatient / OP Dispensed Medicines",
+            "qty": 1,
+            "unit": "Order",
+            "rate": pharmacy_total,
+            "amount": pharmacy_total,
+            "source_type": "PHARMACY",
+            "source_id": "PHARM-901"
+        })
 
     # Category E: Custom Additional Bill Items from DB
     custom_items = db.query(BillItem).filter(BillItem.billing_account_id == acct.id).all()
@@ -245,24 +349,35 @@ def calculate_patient_bill(patient_identifier: str, db: Session = Depends(get_db
     tax = round((subtotal - discount) * 0.05, 2) # 5% GST
     total_bill = round(subtotal - discount - insurance_adj + tax, 2)
 
-    # Payments Recorded
+    # Payments Recorded for this Encounter
     pmt_records = db.query(PaymentRecord).filter(PaymentRecord.billing_account_id == acct.id).all()
     amount_paid = sum(p.amount for p in pmt_records)
-    if not pmt_records and patient_type == "OP":
-        amount_paid = 500.0 # Registration Fee Paid
 
     outstanding_balance = max(0.0, round(total_bill - amount_paid, 2))
-    acct_status = "Paid" if outstanding_balance <= 0 else "Pending"
+    
+    # Accurate Billing Status Lifecycle
+    if outstanding_balance <= 0.0 and total_bill > 0:
+        acct_status = "PAID"
+    elif amount_paid > 0:
+        acct_status = "PARTIALLY_PAID"
+    elif acct.status == "DRAFT":
+        acct_status = "DRAFT"
+    else:
+        acct_status = "OPEN"
+
+    acct.status = acct_status
+    db.commit()
 
     return {
         "billing_account_id": acct.id,
         "account_code": acct.account_code,
+        "encounter_code": enc_code,
         "patient": {
             "id": pt_id,
             "uhid": pt_uhid,
             "name": pt_name,
             "type": patient_type,
-            "encounter_code": encounter_code,
+            "encounter_code": enc_code,
             "doctor": doc_name,
             "department": dept_name,
             "ward": ward_info if patient_type == "IP" else "Outpatient Wing",

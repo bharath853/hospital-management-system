@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from hms_backend.app.core.database import get_db
 from hms_backend.app.models.queue import QueueEntry
 from hms_backend.app.models.patient import Patient
+from hms_backend.app.models.doctor import Doctor
 from hms_backend.app.models.appointment import Appointment
 from hms_backend.app.models.opd import OpVisit
 from hms_backend.app.models.ipd import Ward, Bed, IpAdmission
@@ -100,10 +101,32 @@ async def check_in_patient(payload: dict, db: Session = Depends(get_db)):
         pt = apt.patient
     elif pt_id_input:
         pt = db.query(Patient).filter(
-            (Patient.id == pt_id_input) if str(pt_id_input).isdigit() else (Patient.patient_id == str(pt_id_input))
+            (Patient.id == int(pt_id_input)) if str(pt_id_input).isdigit() else 
+            (Patient.patient_id == str(pt_id_input)) | 
+            (Patient.patient_code == str(pt_id_input)) |
+            (Patient.full_name.ilike(f"%{pt_id_input}%"))
         ).first()
 
-    pt_name = payload.get("Patient Name") or payload.get("Patient") or payload.get("patient_name") or (pt.full_name if pt else "Arun Kumar")
+    pt_name = payload.get("Patient Name") or payload.get("Patient") or payload.get("patient_name") or (pt.full_name if pt else None) or "Walk-in Patient"
+    
+    if not pt:
+        # Check by name if still not found
+        pt = db.query(Patient).filter(Patient.full_name.ilike(f"%{pt_name}%")).first()
+        if not pt:
+            # Create a patient record on the fly for walk-ins
+            pt_count = db.query(Patient).count() + 1001
+            pt = Patient(
+                patient_id=f"PT-{pt_count}",
+                patient_code=f"UHID-2026-{pt_count}",
+                full_name=pt_name,
+                gender="Other",
+                age=30,
+                phone=payload.get("Phone") or "+91 98765 43210"
+            )
+            db.add(pt)
+            db.commit()
+            db.refresh(pt)
+
     doc_name = payload.get("Doctor") or payload.get("doctor_name") or (apt.doctor_name if apt else "Dr. Madhavan")
     dept_name = payload.get("Department") or payload.get("department_name") or (apt.department_name if apt else "Cardiology")
     
@@ -139,17 +162,21 @@ async def check_in_patient(payload: dict, db: Session = Depends(get_db)):
 
     checkin_time_str = datetime.now().strftime("%I:%M %p")
 
-    # Resolve assigned doctor ID (Doctor ID 1 = Dr. Madhavan)
+    # Resolve assigned doctor ID
     assigned_doc_id = (apt.doctor_id if apt else None) or payload.get("assigned_doctor_id") or payload.get("doctor_id")
     if not assigned_doc_id and doc_name:
-        doc_rec = db.query(Doctor).filter(Doctor.name.ilike(f"%{doc_name.split()[-1]}%")).first()
+        last_word = doc_name.split()[-1] if doc_name else ""
+        doc_rec = db.query(Doctor).filter(
+            (Doctor.full_name.ilike(f"%{last_word}%")) | 
+            (Doctor.full_name.ilike(f"%{doc_name}%"))
+        ).first()
         if doc_rec:
             assigned_doc_id = doc_rec.id
     if not assigned_doc_id:
         assigned_doc_id = 1
 
-    ts_suffix = str(int(datetime.now().timestamp()))
-    enc_code = f"ENC-2026-{ts_suffix[-6:]}"
+    ts_suffix = str(int(datetime.now().timestamp() * 1000))[-8:]  # Use ms for uniqueness
+    enc_code = f"ENC-2026-{ts_suffix}"
     encounter = Encounter(
         encounter_code=enc_code,
         patient_id=pt.id if pt else 1,
@@ -221,12 +248,23 @@ async def check_in_patient(payload: dict, db: Session = Depends(get_db)):
     })
 
     return {
+        "Token": token_num,
+        "Token No": token_num,
+        "token_number": token_num,
+        "UHID": pt.patient_code if pt and pt.patient_code else (pt.patient_id if pt else "UHID-100"),
+        "Patient": pt_name,
+        "Doctor": doc_name,
+        "Department": dept_name,
+        "Position": position,
         "Wait Time": est_wait,
         "Est. Time": est_wait,
         "Room": room,
         "Check-In Time": checkin_time_str,
         "Status": "WAITING",
-        "queue_status": "WAITING"
+        "queue_status": "WAITING",
+        "encounter_code": enc_code,
+        "queue_id": queue_entry.id,
+        "patient_id": pt.id if pt else 1
     }
 
 
@@ -559,6 +597,19 @@ def discharge_ip_patient(admission_id: int, db: Session = Depends(get_db)):
 
     db.commit()
     return {"status": "success", "message": f"IP Admission #{admission_id} discharged and bed released to Available."}
+
+
+# 5. Reception Billing & Payment Desk Endpoints
+@router.get("/billing/patient-bill/{patient_or_encounter_id}")
+def get_reception_patient_bill(patient_or_encounter_id: str, encounter_code: str = Query(None), db: Session = Depends(get_db)):
+    from hms_backend.app.api.v1.billing import calculate_patient_bill
+    return calculate_patient_bill(patient_or_encounter_id, encounter_code, db)
+
+
+@router.post("/billing/collect-payment")
+def collect_reception_payment(payload: dict, db: Session = Depends(get_db)):
+    from hms_backend.app.api.v1.billing import process_payment
+    return process_payment(payload, db)
 
 
 # Generic Legacy Fallbacks

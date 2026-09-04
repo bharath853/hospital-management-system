@@ -99,7 +99,6 @@ export default function Login({ onLoginSuccess }) {
     setError('');
   };
 
-
   const handleCompleteLogin = (userData) => {
     onLoginSuccess(userData);
     setLoading(false);
@@ -185,27 +184,36 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#00626b] flex flex-col justify-between font-sans selection:bg-[#007b87] selection:text-white">
+    <div className="min-h-screen w-full bg-[#063C2F] flex flex-col justify-between font-sans selection:bg-[#087F5B] selection:text-white">
       {/* Main Split Screen Container */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-screen relative overflow-hidden">
         
-        {/* Left Section: Teal background with Curved Card */}
-        <div className="lg:col-span-6 bg-[#00626b] flex flex-col justify-between p-6 sm:p-10 lg:p-12 z-10 relative">
+        {/* Left Section: Deep Green background with Curved Card */}
+        <div className="lg:col-span-6 bg-[#063C2F] flex flex-col justify-between p-6 sm:p-10 lg:p-12 z-10 relative">
           
-          {/* Top Branding (Mobile / Small view) */}
-          <div className="flex items-center space-x-2 text-white mb-6 lg:mb-0">
-            <div className="w-9 h-9 bg-teal-400/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-teal-300/30">
-              <Heart className="w-5 h-5 text-teal-200 fill-teal-300/30" />
+          {/* Top Branding */}
+          <div className="flex items-center space-x-2.5 text-white mb-6 lg:mb-0">
+            <div className="w-10 h-10 bg-[#087F5B]/30 backdrop-blur-md rounded-2xl flex items-center justify-center border border-[#12B886]/40 shadow-sm">
+              <Heart className="w-5 h-5 text-[#12B886] fill-[#12B886]/30" />
             </div>
-            <span className="text-xl font-bold tracking-wider">HMS</span>
+            <div>
+              <span className="text-xl font-black tracking-wider text-white">HMS PORTAL</span>
+              <span className="block text-[10px] uppercase font-bold text-[#DDEFE5]/70 tracking-widest">Enterprise Clinical Suite</span>
+            </div>
           </div>
 
           {/* Centered Sign In Form Card */}
           <div className="my-auto flex flex-col items-center justify-center">
-            <div className="bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-2xl w-full max-w-md border border-slate-100/80 animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-2xl font-black tracking-wider text-center text-slate-800 uppercase mb-8">
-                SIGN IN
-              </h2>
+            <div className="bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-2xl w-full max-w-md border border-[#DDE5E0] animate-in fade-in zoom-in-95 duration-300">
+              <div className="text-center mb-8">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#087F5B] bg-[#EEF7F1] px-3 py-1 rounded-full border border-[#087F5B]/20">
+                  Authorized Personnel Access
+                </span>
+                <h2 className="text-2xl font-black tracking-tight text-[#10201B] uppercase mt-3">
+                  SIGN IN
+                </h2>
+                <p className="text-xs text-[#65756E] mt-1">Select your workstation role to authenticate</p>
+              </div>
 
               {error && (
                 <div className="mb-5 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center space-x-2 text-rose-700 text-xs font-semibold">
@@ -214,48 +222,53 @@ export default function Login({ onLoginSuccess }) {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 {/* 1. Role Select Dropdown */}
                 <div className="relative">
-                  <select
-                    value={selectedRole}
-                    onChange={(e) => handleRoleChange(e.target.value)}
-                    className="w-full appearance-none bg-white border border-slate-300/90 rounded-2xl px-5 py-3.5 text-slate-700 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#00626b]/50 focus:border-[#00626b] transition-all cursor-pointer pr-12 shadow-sm"
-                  >
-                    {ROLES_LIST.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-[#00626b]">
-                    <div className="w-6 h-6 rounded-full bg-[#00626b] text-white flex items-center justify-center shadow-sm">
-                      <ChevronDown className="w-4 h-4 stroke-[2.5]" />
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#65756E] mb-1">Assigned Role</label>
+                  <div className="relative">
+                    <select
+                      value={selectedRole}
+                      onChange={(e) => handleRoleChange(e.target.value)}
+                      className="w-full appearance-none bg-[#F6F8F6] border border-[#DDE5E0] rounded-2xl px-4 py-3 text-[#10201B] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#087F5B]/30 focus:border-[#087F5B] transition-all cursor-pointer pr-12 shadow-sm"
+                    >
+                      {ROLES_LIST.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.label} — {r.doctorName}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-[#087F5B]">
+                      <div className="w-6 h-6 rounded-full bg-[#052E24] text-white flex items-center justify-center shadow-sm">
+                        <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* 2. Username Input */}
                 <div className="relative">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#65756E] mb-1">Email / Username</label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Username"
                     required
-                    className="w-full bg-white border border-slate-300/90 rounded-2xl px-5 py-3.5 text-slate-700 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00626b]/50 focus:border-[#00626b] transition-all shadow-sm"
+                    className="w-full bg-[#F6F8F6] border border-[#DDE5E0] rounded-2xl px-4 py-3 text-[#10201B] text-sm placeholder-[#65756E] focus:outline-none focus:ring-2 focus:ring-[#087F5B]/30 focus:border-[#087F5B] transition-all shadow-sm"
                   />
                 </div>
 
                 {/* 3. Password Input */}
                 <div className="relative">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#65756E] mb-1">Security Password</label>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
                     required
-                    className="w-full bg-white border border-slate-300/90 rounded-2xl px-5 py-3.5 text-slate-700 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00626b]/50 focus:border-[#00626b] transition-all shadow-sm"
+                    className="w-full bg-[#F6F8F6] border border-[#DDE5E0] rounded-2xl px-4 py-3 text-[#10201B] text-sm placeholder-[#65756E] focus:outline-none focus:ring-2 focus:ring-[#087F5B]/30 focus:border-[#087F5B] transition-all shadow-sm"
                   />
                 </div>
 
@@ -264,12 +277,12 @@ export default function Login({ onLoginSuccess }) {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="bg-[#00626b] hover:bg-[#004e55] active:scale-[0.98] text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-[#00626b]/30 transition-all flex items-center space-x-2 disabled:opacity-50"
+                    className="bg-[#087F5B] hover:bg-[#07543F] active:scale-[0.98] text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center space-x-2 disabled:opacity-50"
                   >
                     {loading ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     ) : (
-                      <span>Login</span>
+                      <span>Sign In</span>
                     )}
                   </button>
 
@@ -279,7 +292,7 @@ export default function Login({ onLoginSuccess }) {
                       e.preventDefault();
                       alert("Password reset instructions sent to registered system administrator.");
                     }}
-                    className="text-xs font-bold text-slate-700 hover:text-[#00626b] transition-colors"
+                    className="text-xs font-bold text-[#65756E] hover:text-[#087F5B] transition-colors"
                   >
                     Forgot Password?
                   </a>
@@ -289,8 +302,8 @@ export default function Login({ onLoginSuccess }) {
 
             {/* Quick Role Select Demo Pills for Instant Evaluation */}
             <div className="mt-8 w-full max-w-md">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-teal-200/80 mb-2.5 text-center flex items-center justify-center space-x-1">
-                <Sparkles className="w-3 h-3 text-teal-200 animate-pulse" />
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#DDEFE5]/80 mb-2.5 text-center flex items-center justify-center space-x-1">
+                <Sparkles className="w-3 h-3 text-[#12B886] animate-pulse" />
                 <span>1-Click Quick Demo Login</span>
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
@@ -301,10 +314,10 @@ export default function Login({ onLoginSuccess }) {
                     <button
                       key={r.id}
                       onClick={() => handleQuickDemoClick(r.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center space-x-1.5 shadow-sm ${
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center space-x-1.5 shadow-sm ${
                         isSel
-                          ? 'bg-white text-[#00626b] ring-2 ring-white/60 font-bold'
-                          : 'bg-teal-900/40 text-teal-100 hover:bg-white/20 border border-teal-400/20'
+                          ? 'bg-white text-[#052E24] ring-2 ring-white font-extrabold shadow-md'
+                          : 'bg-[#052E24]/60 text-[#DDEFE5] hover:bg-[#07543F] border border-[#07543F]'
                       }`}
                     >
                       <Icon className="w-3.5 h-3.5" />
@@ -317,27 +330,27 @@ export default function Login({ onLoginSuccess }) {
           </div>
 
           {/* Footer note */}
-          <div className="text-xs text-teal-200/60 text-center lg:text-left mt-6">
-            © 2026 HMS Healthcare Information System
+          <div className="text-xs text-[#DDEFE5]/60 text-center lg:text-left mt-6">
+            © 2026 HMS Healthcare Information System • Clinical Enterprise Edition
           </div>
         </div>
 
         {/* Right Section: Healthcare Doctor Image with HMS Logo */}
-        <div className="hidden lg:block lg:col-span-6 relative bg-slate-900 overflow-hidden">
+        <div className="hidden lg:block lg:col-span-6 relative bg-[#052E24] overflow-hidden">
           {/* Background Image */}
           <img
             src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=1400&auto=format&fit=crop"
             alt="Doctor Healthcare"
-            className="w-full h-full object-cover object-center filter brightness-[0.92] contrast-[1.05]"
+            className="w-full h-full object-cover object-center filter brightness-[0.88] contrast-[1.05]"
           />
 
-          {/* Soft gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-slate-950/20 pointer-events-none"></div>
+          {/* Deep Green gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#052E24]/80 via-transparent to-[#052E24]/40 pointer-events-none"></div>
 
           {/* Top Right HMS Logo */}
-          <div className="absolute top-8 right-10 flex items-center space-x-2 text-white z-20">
-            <div className="w-10 h-10 bg-teal-400 rounded-full flex items-center justify-center shadow-lg shadow-teal-500/30 ring-2 ring-white/40">
-              <Heart className="w-6 h-6 text-white fill-white" />
+          <div className="absolute top-8 right-10 flex items-center space-x-2.5 text-white z-20">
+            <div className="w-10 h-10 bg-[#087F5B] rounded-2xl flex items-center justify-center shadow-lg ring-2 ring-white/30">
+              <Heart className="w-5 h-5 text-white fill-white" />
             </div>
             <span className="text-2xl font-black tracking-wider text-white drop-shadow-md">
               HMS
@@ -345,10 +358,10 @@ export default function Login({ onLoginSuccess }) {
           </div>
 
           {/* Bottom Card Overlay */}
-          <div className="absolute bottom-10 left-10 right-10 p-6 bg-slate-950/50 backdrop-blur-md border border-white/10 rounded-2xl text-white">
-            <h3 className="text-lg font-bold">Hospital Management System</h3>
-            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-              Secure role-based access for Administrators, Medical Specialists, Staff Nurses, Receptionists, and Diagnostic Laboratories.
+          <div className="absolute bottom-10 left-10 right-10 p-6 bg-[#052E24]/80 backdrop-blur-md border border-[#07543F] rounded-2xl text-white shadow-2xl">
+            <h3 className="text-lg font-bold text-white">Hospital Management System</h3>
+            <p className="text-xs text-[#DDEFE5] mt-1 leading-relaxed">
+              Enterprise clinical dashboard with closed-loop patient routing, verified vitals capture, ISO-15189 laboratory tracking, and administrative governance.
             </p>
           </div>
         </div>

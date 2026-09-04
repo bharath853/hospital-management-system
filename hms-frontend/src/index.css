@@ -3,10 +3,26 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-color: #01140e;
-  color: #f1f5f9;
+  color-scheme: light;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Clinical Design Tokens */
+  --color-primary-dark: #052E24;
+  --color-deep-green: #063C2F;
+  --color-forest: #07543F;
+  --color-emerald: #087F5B;
+  --color-accent-green: #12B886;
+  --color-soft-green: #DDEFE5;
+  --color-very-light-green: #EEF7F1;
+  --color-background: #F6F8F6;
+  --color-surface: #FFFFFF;
+  --color-text-dark: #10201B;
+  --color-text-secondary: #65756E;
+  --color-border: #DDE5E0;
+  --color-border-light: #E5ECE8;
+  
+  background-color: var(--color-background);
+  color: var(--color-text-dark);
 }
 
 * {
@@ -16,12 +32,14 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at 50% 0%, #03362a 0%, #011a13 50%, #010f0b 100%);
-  color: #f1f5f9;
+  background-color: #F6F8F6;
+  color: #10201B;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
-  background: #059669;
+  background: #087F5B;
   color: #ffffff;
 }
 
@@ -31,17 +49,17 @@ body {
 }
 
 @keyframes slideInFromBottom {
-  from { transform: translateY(1rem); opacity: 0; }
+  from { transform: translateY(0.75rem); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes zoomIn95 {
-  from { transform: scale(0.95); opacity: 0; }
+  from { transform: scale(0.96); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
 
 .animate-in {
-  animation-duration: 0.3s;
+  animation-duration: 0.25s;
   animation-fill-mode: forwards;
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -58,20 +76,20 @@ body {
   animation-name: zoomIn95;
 }
 
-/* Custom scrollbar */
+/* Custom clinical scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(1, 20, 14, 0.5);
+  background: #EEF2F0;
 }
 ::-webkit-scrollbar-thumb {
-  background: #064e3b;
-  border-radius: 4px;
+  background: #A3BFB5;
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #059669;
+  background: #087F5B;
 }
 
 /* Print Stylesheet for Hospital Bills & Invoices */
@@ -114,5 +132,3 @@ body {
     display: none !important;
   }
 }
-
-
