@@ -32,6 +32,7 @@ import {
 import LabSectionBar, { LAB_SECTIONS_CONFIG } from '../../components/Laboratory/LabSectionBar';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || `${API_BASE}`;
+const WS_URL = import.meta.env.VITE_WS_URL || `${WS_URL}`;
 
 export default function LabSectionsPage() {
   const [selectedSection, setSelectedSection] = useState(() => {
@@ -96,7 +97,7 @@ export default function LabSectionsPage() {
     let ws = null;
     try {
       const sectionKey = selectedSection.toLowerCase().split(' ')[0];
-      ws = new WebSocket(`ws://127.0.0.1:8000/ws/laboratory:${sectionKey}`);
+      ws = new WebSocket(`${WS_URL}/ws/laboratory:${sectionKey}`);
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);

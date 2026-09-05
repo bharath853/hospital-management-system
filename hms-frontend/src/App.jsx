@@ -13,6 +13,7 @@ import LabSectionBar from './components/Laboratory/LabSectionBar';
 import LabPageLayout from './components/Laboratory/LabPageLayout';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || `${API_BASE}`;
+const WS_URL = import.meta.env.VITE_WS_URL || `${WS_URL}`;
 
 const DOCTOR_OPTIONS = [
   'Dr. Madhavan',
@@ -5290,7 +5291,7 @@ const DoctorPortalWorkstation = ({ initialSection = 'queue', user }) => {
   useEffect(() => {
     let ws;
     try {
-      ws = new WebSocket(`ws://127.0.0.1:8000/ws?channel=doctor:${doctorId}`);
+      ws = new WebSocket(`${WS_URL}/ws?channel=doctor:${doctorId}`);
       ws.onmessage = (evt) => {
         try {
           const msg = JSON.parse(evt.data);
@@ -7868,7 +7869,7 @@ const NursePortalDashboard = ({ initialTab = 'dashboard' }) => {
     // REAL-TIME EVENT-DRIVEN WEBSOCKET LISTENER
     let ws;
     try {
-      ws = new WebSocket('ws://127.0.0.1:8000/ws');
+      ws = new WebSocket(`${WS_URL}/ws`);
       ws.onmessage = (evt) => {
         try {
           const msg = JSON.parse(evt.data);
