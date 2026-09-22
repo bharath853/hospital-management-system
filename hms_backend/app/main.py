@@ -26,6 +26,7 @@ import hms_backend.app.models.generic
 import hms_backend.app.models.queue
 import hms_backend.app.models.encounter
 import hms_backend.app.models.imaging
+import hms_backend.app.models.reception_billing
 import json
 
 from hms_backend.app.core.websocket import manager, WebSocket, WebSocketDisconnect

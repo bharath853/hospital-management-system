@@ -12,6 +12,12 @@ import LabSectionsPage from './pages/Laboratory/LabSectionsPage';
 import LabSectionBar from './components/Laboratory/LabSectionBar';
 import LabPageLayout from './components/Laboratory/LabPageLayout';
 
+// New Reception Imports
+import ReceptionLayout from './pages/Reception/ReceptionLayout';
+import ReceptionDashboard from './pages/Reception/ReceptionDashboard';
+import ReceptionBillingModule from './pages/Reception/ReceptionBillingModule';
+import ReceptionDailyCollection from './pages/Reception/ReceptionDailyCollection';
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || `${API_BASE}`;
 const WS_URL = import.meta.env.VITE_WS_URL || `${WS_URL}`;
 
@@ -9709,6 +9715,17 @@ function App() {
           } 
         />
         
+        {/* Reception Layout Group */}
+        <Route element={user && String(user.role || '').toLowerCase().includes('reception') ? <ReceptionLayout onLogout={handleLogout} /> : <Navigate to="/login" replace />}>
+          <Route path="/reception/dashboard" element={<ProtectedRoute user={user} path="/reception/dashboard"><ReceptionDashboard /></ProtectedRoute>} />
+          <Route path="/reception/patient-registration" element={<ProtectedRoute user={user} path="/reception/patient-registration"><PatientRegistration /></ProtectedRoute>} />
+          <Route path="/reception/appointment-booking" element={<ProtectedRoute user={user} path="/reception/appointment-booking"><AppointmentBooking /></ProtectedRoute>} />
+          <Route path="/reception/queue-management" element={<ProtectedRoute user={user} path="/reception/queue-management"><QueueManagement /></ProtectedRoute>} />
+          <Route path="/reception/op-ip-registration" element={<ProtectedRoute user={user} path="/reception/op-ip-registration"><OPIPRegistration /></ProtectedRoute>} />
+          <Route path="/reception/billing" element={<ProtectedRoute user={user} path="/reception/billing"><ReceptionBillingModule /></ProtectedRoute>} />
+          <Route path="/reception/daily-collection" element={<ProtectedRoute user={user} path="/reception/daily-collection"><ReceptionDailyCollection /></ProtectedRoute>} />
+        </Route>
+        
         <Route element={user ? <Layout user={user} onLogout={handleLogout} /> : <Navigate to="/login" replace />}>
           {/* 1. Admin */}
           <Route path="/admin/dashboard" element={<ProtectedRoute user={user} path="/admin/dashboard"><AdminPortalPage /></ProtectedRoute>} />
@@ -9728,12 +9745,7 @@ function App() {
           <Route path="/admin/settings" element={<ProtectedRoute user={user} path="/admin/settings"><AdminPortalPage /></ProtectedRoute>} />
           <Route path="/admin/deleted-records" element={<ProtectedRoute user={user} path="/admin/deleted-records"><AdminPortalPage /></ProtectedRoute>} />
           
-          {/* 2. Reception */}
-          <Route path="/reception/patient-registration" element={<ProtectedRoute user={user} path="/reception/patient-registration"><PatientRegistration /></ProtectedRoute>} />
-          <Route path="/reception/appointment-booking" element={<ProtectedRoute user={user} path="/reception/appointment-booking"><AppointmentBooking /></ProtectedRoute>} />
-          <Route path="/reception/queue-management" element={<ProtectedRoute user={user} path="/reception/queue-management"><QueueManagement /></ProtectedRoute>} />
-          <Route path="/reception/op-ip-registration" element={<ProtectedRoute user={user} path="/reception/op-ip-registration"><OPIPRegistration /></ProtectedRoute>} />
-          <Route path="/reception/billing-payments" element={<ProtectedRoute user={user} path="/reception/billing-payments"><InvoiceGeneration /></ProtectedRoute>} />
+          {/* 2. Reception (OLD, replaced by new layout outside) */}
           
           {/* 3. Doctor Workstation */}
           <Route path="/doctor/appointments" element={<ProtectedRoute user={user} path="/doctor/appointments"><DoctorPortalWorkstation initialSection="queue" user={user} /></ProtectedRoute>} />
