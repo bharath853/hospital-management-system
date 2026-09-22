@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Search, FileText, CheckCircle, AlertCircle, CreditCard, Receipt, Plus } from 'lucide-react';
 import PaymentModal from './PaymentModal';
 import ReceiptView from './ReceiptView';

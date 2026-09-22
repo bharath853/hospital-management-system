@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Search, Plus, Calendar, Activity, ChevronRight, CheckCircle2, UserPlus, AlertCircle, X, Download, FileText, Settings, RefreshCw, HeartPulse, Clock, Filter, CreditCard } from 'lucide-react';
 
 const QueueManagement = () => {
